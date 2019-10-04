@@ -1,13 +1,20 @@
 package com.example.instagramphotocropper
 
 import android.Manifest
+import android.app.Activity
+import android.app.ProgressDialog
+import android.content.Intent
 import android.content.pm.PackageManager
 import android.graphics.Bitmap
 import android.graphics.BitmapFactory
 import android.graphics.Color
 import android.graphics.drawable.BitmapDrawable
+import android.net.Uri
 import android.os.Bundle
 import android.os.Environment
+import android.os.Handler
+import android.os.Message
+import android.provider.LiveFolders.INTENT
 import android.support.design.widget.Snackbar
 import android.support.v4.app.ActivityCompat
 import android.support.v4.app.LoaderManager
@@ -26,6 +33,8 @@ import java.lang.Exception
 import android.widget.RelativeLayout
 import android.widget.ProgressBar
 import kotlinx.android.synthetic.main.content_main.*
+import java.io.FileInputStream
+import kotlin.concurrent.thread
 
 
 class MainActivity : AppCompatActivity() {
@@ -34,17 +43,83 @@ class MainActivity : AppCompatActivity() {
 
     val invalidColors = arrayListOf<PixelColor>()
 
+    lateinit var pd : ProgressDialog
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_main)
         setSupportActionBar(toolbar)
 
+        verifyFolders()
+
         if (ContextCompat.checkSelfPermission(this, Manifest.permission.READ_EXTERNAL_STORAGE) != PackageManager.PERMISSION_GRANTED) {
             ActivityCompat.requestPermissions(this, arrayOf(Manifest.permission.READ_EXTERNAL_STORAGE, Manifest.permission.WRITE_EXTERNAL_STORAGE), MY_PERMISSIONS_REQUEST)
         }
 
+        val handler = object : Handler() {
+            override fun handleMessage(msg: Message) {
+                hideLoader()
+            }
+        }
+
+        addFilesImageButton.setOnClickListener {
+            val intent = Intent()
+                .setType("*/*")
+                .setAction(Intent.ACTION_GET_CONTENT)
+
+            intent.putExtra(Intent.EXTRA_ALLOW_MULTIPLE, true)
+
+            startActivityForResult(Intent.createChooser(intent, "Select files"), 123)
+        }
+
         fab.setOnClickListener { view ->
-            cropp()
+            showLoader()
+            thread {
+                cropp()
+
+                handler.sendEmptyMessage(0)
+            }
+        }
+
+
+    }
+
+    override fun onActivityResult(requestCode: Int, resultCode: Int, data: Intent?) {
+        super.onActivityResult(requestCode, resultCode, data)
+        if (requestCode == 123 && resultCode == Activity.RESULT_OK){
+            data?.let {
+                if (null != it.clipData) {
+                    for (i in 0 until it.clipData!!.itemCount) {
+                        val uri = it.clipData!!.getItemAt(i).uri
+
+                        dumpImageMetaData(uri)
+                    }
+                } else {
+                    val uri = data.data
+                    dumpImageMetaData(uri)
+                }
+            }
+        }
+    }
+
+    fun dumpImageMetaData(uri : Uri){
+        val inputStream = FileInputStream(uri.path);
+        val outputStream = FileOutputStream("${Environment.getExternalStorageDirectory()}/InstagramScreenshotCropper/ToBeCropped/${uri.path.split("/").last()}")
+        val inputChannel = inputStream.channel
+        val outputChannel = outputStream.channel
+        inputChannel.transferTo(0, inputChannel.size(), outputChannel)
+        inputStream.close()
+        outputStream.close()
+    }
+
+    fun verifyFolders() {
+        val input = File("${Environment.getExternalStorageDirectory()}/InstagramScreenshotCropper/ToBeCropped/")
+        val output = File("${Environment.getExternalStorageDirectory()}/InstagramScreenshotCropper/Cropped/")
+        if (!input.exists()){
+            input.mkdirs()
+        }
+        if (!output.exists()){
+            output.mkdirs()
         }
     }
 
@@ -68,18 +143,16 @@ class MainActivity : AppCompatActivity() {
         getWindow().setFlags(WindowManager.LayoutParams.FLAG_NOT_TOUCHABLE,
             WindowManager.LayoutParams.FLAG_NOT_TOUCHABLE);
 
-        progressBar.setVisibility(View.VISIBLE)
+        pd = ProgressDialog.show(this, "", "Recortando")
     }
 
     fun hideLoader(){
-        progressBar.setVisibility(View.GONE)
+        pd.dismiss()
 
         getWindow().clearFlags(WindowManager.LayoutParams.FLAG_NOT_TOUCHABLE);
     }
 
     fun cropp(){
-        showLoader()
-
         val list = loadImages()
 
         var counter = 0
@@ -141,21 +214,17 @@ class MainActivity : AppCompatActivity() {
 
             val resizedbitmap1 = Bitmap.createBitmap(image, 0, yToStart, 1080, yToFinish - yToStart);
             try {
-                val out = FileOutputStream("${Environment.getExternalStorageDirectory()}/Cropped/${counter}.png")
+                val out = FileOutputStream("${Environment.getExternalStorageDirectory()}/InstagramScreenshotCropper/Cropped/${counter}.png")
                 resizedbitmap1.compress(Bitmap.CompressFormat.PNG, 100, out)
             }catch (ex : Exception){
 
             }
         }
-
-        hideLoader()
     }
 
     fun loadImages() : ArrayList<Bitmap>{
-        val d = Environment.getExternalStorageDirectory().toString()
-
         val bitmapList = arrayListOf<Bitmap>()
-        val file = File("${Environment.getExternalStorageDirectory()}/ToBeCropped/")
+        val file = File("${Environment.getExternalStorageDirectory()}/InstagramScreenshotCropper/ToBeCropped/")
         val fileList = file.listFiles()
         for (f in fileList){
             bitmapList.add(BitmapFactory.decodeFile(f.path))
