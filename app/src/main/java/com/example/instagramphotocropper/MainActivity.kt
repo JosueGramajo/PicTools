@@ -5,21 +5,25 @@ import android.app.Activity
 import android.app.ProgressDialog
 import android.content.Intent
 import android.content.pm.PackageManager
+import android.database.Cursor
 import android.graphics.Bitmap
 import android.graphics.BitmapFactory
 import android.graphics.Color
 import android.graphics.drawable.BitmapDrawable
 import android.net.Uri
-import android.os.Bundle
-import android.os.Environment
-import android.os.Handler
-import android.os.Message
+import android.os.*
 import android.provider.LiveFolders.INTENT
+import android.provider.MediaStore
+import android.provider.OpenableColumns
 import android.support.design.widget.Snackbar
 import android.support.v4.app.ActivityCompat
 import android.support.v4.app.LoaderManager
 import android.support.v4.content.ContextCompat
+import android.support.v4.content.FileProvider
+import android.support.v4.content.FileProvider.getUriForFile
 import android.support.v7.app.AppCompatActivity;
+import android.support.v7.widget.GridLayoutManager
+import android.util.Log
 import android.view.Menu
 import android.view.MenuItem
 import android.view.View
@@ -32,7 +36,11 @@ import java.io.FileOutputStream
 import java.lang.Exception
 import android.widget.RelativeLayout
 import android.widget.ProgressBar
+import kotlinx.android.synthetic.main.activity_main.view.*
 import kotlinx.android.synthetic.main.content_main.*
+import org.jetbrains.anko.selector
+import org.jetbrains.anko.toast
+import java.io.FileDescriptor
 import java.io.FileInputStream
 import kotlin.concurrent.thread
 
@@ -45,6 +53,15 @@ class MainActivity : AppCompatActivity() {
 
     lateinit var pd : ProgressDialog
 
+    val inPath = "${Environment.getExternalStorageDirectory()}/InstagramScreenshotCropper/ToBeCropped/"
+    val outPath = "${Environment.getExternalStorageDirectory()}/InstagramScreenshotCropper/Cropped/"
+
+    lateinit var handler : Handler
+
+    val images = arrayListOf<CustomImage>()
+
+    val itemOptions = listOf("Remove")
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_main)
@@ -54,11 +71,33 @@ class MainActivity : AppCompatActivity() {
 
         if (ContextCompat.checkSelfPermission(this, Manifest.permission.READ_EXTERNAL_STORAGE) != PackageManager.PERMISSION_GRANTED) {
             ActivityCompat.requestPermissions(this, arrayOf(Manifest.permission.READ_EXTERNAL_STORAGE, Manifest.permission.WRITE_EXTERNAL_STORAGE), MY_PERMISSIONS_REQUEST)
+        }else{
+            thread {
+                showLoader()
+
+                loadImages()
+
+                handler.sendEmptyMessage(0)
+            }
         }
 
-        val handler = object : Handler() {
+        handler = object : Handler() {
             override fun handleMessage(msg: Message) {
                 hideLoader()
+
+                recycler.adapter!!.notifyDataSetChanged()
+
+                if(images.isEmpty()){
+                    recycler.visibility = View.GONE
+                    addFilesImageButton.visibility = View.VISIBLE
+                    fab.hide()
+                    fab_delete.hide()
+                }else{
+                    recycler.visibility = View.VISIBLE
+                    addFilesImageButton.visibility = View.GONE
+                    fab.show()
+                    fab_delete.show()
+                }
             }
         }
 
@@ -81,40 +120,87 @@ class MainActivity : AppCompatActivity() {
             }
         }
 
+        fab_delete.setOnClickListener{
 
+        }
+
+
+        recycler.layoutManager = GridLayoutManager(this,3)
+        recycler.adapter = GalleryAdapter(images){ imageItem ->
+            selector("Select an option", itemOptions) { dialogInterface, i ->
+                when(itemOptions[i]){
+                    "Remove" -> {
+                        val file = File(imageItem.path)
+                        file.delete()
+
+                        images.removeIf { it.name.equals(imageItem.name) }
+
+                        recycler.adapter!!.notifyDataSetChanged()
+                    }
+                }
+            }
+        }
+        recycler.visibility = View.GONE
     }
+
 
     override fun onActivityResult(requestCode: Int, resultCode: Int, data: Intent?) {
         super.onActivityResult(requestCode, resultCode, data)
         if (requestCode == 123 && resultCode == Activity.RESULT_OK){
-            data?.let {
-                if (null != it.clipData) {
-                    for (i in 0 until it.clipData!!.itemCount) {
-                        val uri = it.clipData!!.getItemAt(i).uri
+            showLoader()
 
-                        dumpImageMetaData(uri)
+            thread {
+                data?.let {
+                    if (null != it.clipData) {
+                        for (i in 0 until it.clipData!!.itemCount) {
+                            val uri = it.clipData!!.getItemAt(i).uri
+
+                            val name = getImageName(uri)
+
+                            copyBitmapFromUri(uri, name)
+                        }
+                    } else {
+                        val uri = data.data
+
+                        val name = getImageName(uri)
+
+                        copyBitmapFromUri(uri, name)
                     }
-                } else {
-                    val uri = data.data
-                    dumpImageMetaData(uri)
+
+                    loadImages()
+
+                    handler.sendEmptyMessage(0)
                 }
             }
         }
     }
 
-    fun dumpImageMetaData(uri : Uri){
-        val inputStream = FileInputStream(uri.path);
-        val outputStream = FileOutputStream("${Environment.getExternalStorageDirectory()}/InstagramScreenshotCropper/ToBeCropped/${uri.path.split("/").last()}")
-        val inputChannel = inputStream.channel
-        val outputChannel = outputStream.channel
-        inputChannel.transferTo(0, inputChannel.size(), outputChannel)
-        inputStream.close()
-        outputStream.close()
+    fun getImageName(uri: Uri) : String{
+
+        val cursor: Cursor? = contentResolver.query( uri, null, null, null, null, null)
+
+        cursor?.use {
+            if (it.moveToFirst()) {
+                return it.getString(it.getColumnIndex(OpenableColumns.DISPLAY_NAME))
+            }
+        }
+
+        return "desconocido"
+    }
+
+    private fun copyBitmapFromUri(uri: Uri, name: String) {
+        val parcelFileDescriptor: ParcelFileDescriptor = contentResolver.openFileDescriptor(uri, "r")!!
+        val fileDescriptor: FileDescriptor = parcelFileDescriptor.fileDescriptor
+        val image: Bitmap = BitmapFactory.decodeFileDescriptor(fileDescriptor)
+        parcelFileDescriptor.close()
+
+        val out = FileOutputStream("${inPath}${name}")
+        image.compress(Bitmap.CompressFormat.PNG, 100, out)
     }
 
     fun verifyFolders() {
-        val input = File("${Environment.getExternalStorageDirectory()}/InstagramScreenshotCropper/ToBeCropped/")
-        val output = File("${Environment.getExternalStorageDirectory()}/InstagramScreenshotCropper/Cropped/")
+        val input = File(inPath)
+        val output = File(outPath)
         if (!input.exists()){
             input.mkdirs()
         }
@@ -124,26 +210,32 @@ class MainActivity : AppCompatActivity() {
     }
 
     override fun onCreateOptionsMenu(menu: Menu): Boolean {
-        // Inflate the menu; this adds items to the action bar if it is present.
         menuInflater.inflate(R.menu.menu_main, menu)
         return true
     }
 
     override fun onOptionsItemSelected(item: MenuItem): Boolean {
-        // Handle action bar item clicks here. The action bar will
-        // automatically handle clicks on the Home/Up button, so long
-        // as you specify a parent activity in AndroidManifest.xml.
-        return when (item.itemId) {
-            R.id.action_settings -> true
+
+        when (item.itemId) {
+            R.id.action_settings -> {
+                val dir = getExternalFilesDir("file://${Environment.getExternalStorageDirectory()}/InstagramScreenshotCropper/")
+                val intent = Intent(Intent.ACTION_VIEW)
+                val mydir = getUriForFile(this, "com.example.instagramphotocropper.fileprovider", dir)
+                intent.setDataAndType(mydir, "resource/folder")
+                startActivity(intent);
+            }
+
             else -> super.onOptionsItemSelected(item)
         }
+
+        return true
     }
 
     fun showLoader(){
         getWindow().setFlags(WindowManager.LayoutParams.FLAG_NOT_TOUCHABLE,
             WindowManager.LayoutParams.FLAG_NOT_TOUCHABLE);
 
-        pd = ProgressDialog.show(this, "", "Recortando")
+        pd = ProgressDialog.show(this, "", "Loading")
     }
 
     fun hideLoader(){
@@ -153,27 +245,21 @@ class MainActivity : AppCompatActivity() {
     }
 
     fun cropp(){
-        val list = loadImages()
 
-        var counter = 0
-
-        for (image in list){
+        for (i in images){
 
             var yToStart = 0
             var yToFinish = 0
 
             var mode = "topLine"
 
-            counter += 1
-
-            heightLoop@ for (y in 1..(image.height - 1)){
+            heightLoop@ for (y in 1..(i.image.height - 1)){
                 var whiteNumber = 0
 
                 invalidColors.clear()
 
-                for (x in 1..(image.width - 1)){
-                    //println("${x},${y}")
-                    val pixel = image.getPixel(x, y)
+                for (x in 1..(i.image.width - 1)){
+                    val pixel = i.image.getPixel(x, y)
 
                     val red = Color.red(pixel)
                     val blue = Color.blue(pixel)
@@ -193,8 +279,8 @@ class MainActivity : AppCompatActivity() {
                     }
                 }
 
-                for (i in invalidColors){
-                    if (i.amount > 200){
+                for (invalid in invalidColors){
+                    if (invalid.amount > 200){
                         continue@heightLoop
                     }
                 }
@@ -212,9 +298,9 @@ class MainActivity : AppCompatActivity() {
             }
 
 
-            val resizedbitmap1 = Bitmap.createBitmap(image, 0, yToStart, 1080, yToFinish - yToStart);
+            val resizedbitmap1 = Bitmap.createBitmap(i.image, 0, yToStart, 1080, yToFinish - yToStart);
             try {
-                val out = FileOutputStream("${Environment.getExternalStorageDirectory()}/InstagramScreenshotCropper/Cropped/${counter}.png")
+                val out = FileOutputStream("${outPath}${i.name}.png")
                 resizedbitmap1.compress(Bitmap.CompressFormat.PNG, 100, out)
             }catch (ex : Exception){
 
@@ -222,14 +308,17 @@ class MainActivity : AppCompatActivity() {
         }
     }
 
-    fun loadImages() : ArrayList<Bitmap>{
+    fun loadImages(){
+        images.clear()
+
         val bitmapList = arrayListOf<Bitmap>()
-        val file = File("${Environment.getExternalStorageDirectory()}/InstagramScreenshotCropper/ToBeCropped/")
+        val file = File(inPath)
         val fileList = file.listFiles()
         for (f in fileList){
             bitmapList.add(BitmapFactory.decodeFile(f.path))
+            images.add(CustomImage(f.name, f.path, BitmapFactory.decodeFile(f.path)))
         }
-
-        return bitmapList;
     }
 }
+
+class GenericFileProvider : FileProvider() {}
