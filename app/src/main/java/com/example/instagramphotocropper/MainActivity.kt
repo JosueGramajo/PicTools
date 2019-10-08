@@ -38,8 +38,7 @@ import android.widget.RelativeLayout
 import android.widget.ProgressBar
 import kotlinx.android.synthetic.main.activity_main.view.*
 import kotlinx.android.synthetic.main.content_main.*
-import org.jetbrains.anko.selector
-import org.jetbrains.anko.toast
+import org.jetbrains.anko.*
 import java.io.FileDescriptor
 import java.io.FileInputStream
 import kotlin.concurrent.thread
@@ -67,6 +66,10 @@ class MainActivity : AppCompatActivity() {
         setContentView(R.layout.activity_main)
         setSupportActionBar(toolbar)
 
+        fab.hide()
+        fab_add.hide()
+        fab_delete.hide()
+
         verifyFolders()
 
         if (ContextCompat.checkSelfPermission(this, Manifest.permission.READ_EXTERNAL_STORAGE) != PackageManager.PERMISSION_GRANTED) {
@@ -92,23 +95,19 @@ class MainActivity : AppCompatActivity() {
                     addFilesImageButton.visibility = View.VISIBLE
                     fab.hide()
                     fab_delete.hide()
+                    fab_add.hide()
                 }else{
                     recycler.visibility = View.VISIBLE
                     addFilesImageButton.visibility = View.GONE
                     fab.show()
                     fab_delete.show()
+                    fab_add.show()
                 }
             }
         }
 
         addFilesImageButton.setOnClickListener {
-            val intent = Intent()
-                .setType("*/*")
-                .setAction(Intent.ACTION_GET_CONTENT)
-
-            intent.putExtra(Intent.EXTRA_ALLOW_MULTIPLE, true)
-
-            startActivityForResult(Intent.createChooser(intent, "Select files"), 123)
+            openFilePicker()
         }
 
         fab.setOnClickListener { view ->
@@ -120,10 +119,29 @@ class MainActivity : AppCompatActivity() {
             }
         }
 
-        fab_delete.setOnClickListener{
+        fab_delete.setOnClickListener{ view ->
+            alert("Would you like to delete all images?",""){
+                yesButton {
+                    showLoader()
+                    thread {
+                        val file = File(inPath)
+                        val fileList = file.listFiles()
+                        for (f in fileList){
+                            f.delete()
+                        }
 
+                        images.clear()
+
+                        handler.sendEmptyMessage(0)
+                    }
+                }
+                noButton {  }
+            }.show()
         }
 
+        fab_add.setOnClickListener{
+            openFilePicker()
+        }
 
         recycler.layoutManager = GridLayoutManager(this,3)
         recycler.adapter = GalleryAdapter(images){ imageItem ->
@@ -143,6 +161,15 @@ class MainActivity : AppCompatActivity() {
         recycler.visibility = View.GONE
     }
 
+    fun openFilePicker(){
+        val intent = Intent()
+            .setType("*/*")
+            .setAction(Intent.ACTION_GET_CONTENT)
+
+        intent.putExtra(Intent.EXTRA_ALLOW_MULTIPLE, true)
+
+        startActivityForResult(Intent.createChooser(intent, "Select files"), 123)
+    }
 
     override fun onActivityResult(requestCode: Int, resultCode: Int, data: Intent?) {
         super.onActivityResult(requestCode, resultCode, data)

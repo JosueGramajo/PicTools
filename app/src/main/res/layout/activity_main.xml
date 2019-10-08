@@ -30,17 +30,18 @@
             android:layout_gravity="bottom|end"
             android:layout_marginBottom="145dp"
             android:layout_marginRight="16dp"
-            app:srcCompat="@android:drawable/ic_menu_delete"
-            android:backgroundTint="@color/deletionRed"/>
+            app:srcCompat="@drawable/ic_delete"
+            android:backgroundTint="@color/deletionRed"
+    />
 
     <android.support.design.widget.FloatingActionButton
-            android:id="@+id/fab_open"
+            android:id="@+id/fab_add"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:layout_gravity="bottom|end"
             android:layout_marginBottom="80dp"
             android:layout_marginRight="16dp"
-            app:srcCompat="@android:drawable/ic_menu_delete"
+            app:srcCompat="@drawable/ic_add"
             android:backgroundTint="@color/openGreen"/>
 
     <android.support.design.widget.FloatingActionButton
@@ -49,6 +50,6 @@
             android:layout_height="wrap_content"
             android:layout_gravity="bottom|end"
             android:layout_margin="@dimen/fab_margin"
-            app:srcCompat="@android:drawable/ic_menu_crop"/>
+            app:srcCompat="@drawable/ic_image_cut"/>
 
 </android.support.design.widget.CoordinatorLayout>
