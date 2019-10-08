@@ -61,6 +61,8 @@ class MainActivity : AppCompatActivity() {
 
     val itemOptions = listOf("Remove")
 
+    val context = this
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_main)
@@ -88,21 +90,27 @@ class MainActivity : AppCompatActivity() {
             override fun handleMessage(msg: Message) {
                 hideLoader()
 
-                recycler.adapter!!.notifyDataSetChanged()
-
-                if(images.isEmpty()){
-                    recycler.visibility = View.GONE
-                    addFilesImageButton.visibility = View.VISIBLE
-                    fab.hide()
-                    fab_delete.hide()
-                    fab_add.hide()
+                if (msg.what == 5){
+                    startActivity(Intent(context, ResultActivity::class.java))
                 }else{
-                    recycler.visibility = View.VISIBLE
-                    addFilesImageButton.visibility = View.GONE
-                    fab.show()
-                    fab_delete.show()
-                    fab_add.show()
+                    recycler.adapter!!.notifyDataSetChanged()
+
+                    if(images.isEmpty()){
+                        recycler.visibility = View.GONE
+                        addFilesImageButton.visibility = View.VISIBLE
+                        fab.hide()
+                        fab_delete.hide()
+                        fab_add.hide()
+                    }else{
+                        recycler.visibility = View.VISIBLE
+                        addFilesImageButton.visibility = View.GONE
+                        fab.show()
+                        fab_delete.show()
+                        fab_add.show()
+                    }
                 }
+
+
             }
         }
 
@@ -115,7 +123,7 @@ class MainActivity : AppCompatActivity() {
             thread {
                 cropp()
 
-                handler.sendEmptyMessage(0)
+                handler.sendEmptyMessage(5)
             }
         }
 
