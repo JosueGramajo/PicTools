@@ -352,6 +352,8 @@ class MainActivity : AppCompatActivity() {
         for (f in fileList){
             bitmapList.add(BitmapFactory.decodeFile(f.path))
             images.add(CustomImage(f.name, f.path, BitmapFactory.decodeFile(f.path)))
+
+            f.delete()
         }
     }
 }

@@ -59,6 +59,10 @@ class ResultActivity : AppCompatActivity(){
             openDirectoryPicker()
         }
 
+        fab_delete_results.setOnClickListener {
+            deleteAllFiles()
+        }
+
         loadImages()
     }
 
