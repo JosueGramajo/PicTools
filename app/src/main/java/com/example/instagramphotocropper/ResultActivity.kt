@@ -33,37 +33,11 @@ class ResultActivity : AppCompatActivity(){
 
     val outPath = "${Environment.getExternalStorageDirectory()}/InstagramScreenshotCropper/Cropped/"
 
-    lateinit var pd : ProgressDialog
-
-    lateinit var handler : Handler
-
     val itemOptions = listOf("Remove")
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.result_activity)
-
-        handler = object : Handler() {
-            override fun handleMessage(msg: Message) {
-                hideLoader()
-
-                recyclerResult.adapter!!.notifyDataSetChanged()
-
-                if(images.isEmpty()){
-                    recyclerResult.visibility = View.GONE
-                }else{
-                    recyclerResult.visibility = View.VISIBLE
-                }
-            }
-        }
-
-        thread {
-            showLoader()
-
-            loadImages()
-
-            handler.sendEmptyMessage(0)
-        }
 
         recyclerResult.layoutManager = GridLayoutManager(this, 3)
         recyclerResult.adapter = GalleryAdapter(images){ imageItem ->
@@ -81,12 +55,16 @@ class ResultActivity : AppCompatActivity(){
             }
         }
 
-
         fab_move.setOnClickListener {
             openDirectoryPicker()
         }
+
+        loadImages()
     }
 
+    override fun onBackPressed() {
+        finish()
+    }
 
     fun writeImagesInSelectedPath(path : String){
         val newPath = path.replace("/tree/primary:", "${Environment.getExternalStorageDirectory()}/")
@@ -146,13 +124,7 @@ class ResultActivity : AppCompatActivity(){
             bitmapList.add(BitmapFactory.decodeFile(f.path))
             images.add(CustomImage(f.name, f.path, BitmapFactory.decodeFile(f.path)))
         }
-    }
 
-    fun showLoader(){
-        pd = ProgressDialog.show(this, "", "Loading")
-    }
-
-    fun hideLoader(){
-        pd.dismiss()
+        recyclerResult.adapter!!.notifyDataSetChanged()
     }
 }
