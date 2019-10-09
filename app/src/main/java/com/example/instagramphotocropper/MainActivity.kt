@@ -335,7 +335,7 @@ class MainActivity : AppCompatActivity() {
 
             val resizedbitmap1 = Bitmap.createBitmap(i.image, 0, yToStart, 1080, yToFinish - yToStart);
             try {
-                val out = FileOutputStream("${outPath}${i.name}.png")
+                val out = FileOutputStream("${outPath}${i.name.removeUnwantedExtension()}.png")
                 resizedbitmap1.compress(Bitmap.CompressFormat.PNG, 100, out)
             }catch (ex : Exception){
 
@@ -352,8 +352,6 @@ class MainActivity : AppCompatActivity() {
         for (f in fileList){
             bitmapList.add(BitmapFactory.decodeFile(f.path))
             images.add(CustomImage(f.name, f.path, BitmapFactory.decodeFile(f.path)))
-
-            f.delete()
         }
     }
 }

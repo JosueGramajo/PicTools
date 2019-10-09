@@ -4,28 +4,14 @@ import android.content.Context
 import android.graphics.Bitmap
 import android.support.v7.widget.AppCompatImageView
 import android.util.AttributeSet
+import java.time.LocalDate
+import java.util.*
 
 
 data class PixelColor(var color : Int, var amount : Int)
 
 data class CustomImage(var name : String, var path : String, var image : Bitmap)
 
-class SquareImageView : AppCompatImageView {
-    constructor(context: Context) : super(context) {}
+data class RecentPaths(var path : String, var date : LocalDate)
 
-    constructor(context: Context, attrs: AttributeSet) : super(context, attrs) {}
-
-    constructor(context: Context, attrs: AttributeSet, defStyleAttr: Int) : super(
-        context,
-        attrs,
-        defStyleAttr
-    ) {
-    }
-
-    override fun onMeasure(widthMeasureSpec: Int, heightMeasureSpec: Int) {
-        super.onMeasure(widthMeasureSpec, heightMeasureSpec)
-
-        val width = measuredWidth
-        setMeasuredDimension(width, width)
-    }
-}
+data class RecentPathList(var list : ArrayList<RecentPaths>)

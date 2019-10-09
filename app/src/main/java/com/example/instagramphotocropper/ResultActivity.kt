@@ -1,7 +1,9 @@
 package com.example.instagramphotocropper
 
 import android.app.ProgressDialog
+import android.content.Context
 import android.content.Intent
+import android.content.SharedPreferences
 import android.graphics.Bitmap
 import android.graphics.BitmapFactory
 import android.os.Bundle
@@ -15,6 +17,7 @@ import android.view.KeyEvent
 import android.view.View
 import android.view.WindowManager
 import android.widget.Gallery
+import com.google.gson.Gson
 import kotlinx.android.synthetic.main.activity_main.*
 import kotlinx.android.synthetic.main.content_main.*
 import kotlinx.android.synthetic.main.result_activity.*
@@ -25,6 +28,7 @@ import org.jetbrains.anko.yesButton
 import java.io.File
 import java.io.FileOutputStream
 import java.lang.Exception
+import java.time.LocalDate
 import kotlin.concurrent.thread
 
 class ResultActivity : AppCompatActivity(){
@@ -35,9 +39,15 @@ class ResultActivity : AppCompatActivity(){
 
     val itemOptions = listOf("Remove")
 
+    val pathOptions = arrayListOf<String>("Select new path")
+
+    lateinit  var preferences : SharedPreferences
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.result_activity)
+
+        preferences = getPreferences(Context.MODE_PRIVATE)
 
         recyclerResult.layoutManager = GridLayoutManager(this, 3)
         recyclerResult.adapter = GalleryAdapter(images){ imageItem ->
@@ -56,11 +66,32 @@ class ResultActivity : AppCompatActivity(){
         }
 
         fab_move.setOnClickListener {
-            openDirectoryPicker()
+
+
+            selector("Select the destination folder", pathOptions) { dialogInterface, i ->
+                when(pathOptions[i]){
+                    "Select new path" -> {
+                        openDirectoryPicker()
+                    }
+                    else -> {
+                        writeImagesInSelectedPath(pathOptions[i])
+                    }
+                }
+            }
+
         }
 
         fab_delete_results.setOnClickListener {
             deleteAllFiles()
+        }
+
+        val existingArray = preferences.getString("paths",null)
+        existingArray?.let { existing ->
+            val gson = Gson()
+            val existingList = gson.fromJson(existing, RecentPathList::class.java)
+            existingList.list.map {
+                pathOptions.add(it.path)
+            }
         }
 
         loadImages()
@@ -70,17 +101,29 @@ class ResultActivity : AppCompatActivity(){
         finish()
     }
 
+    override fun onDestroy() {
+        val file = File(outPath)
+        val fileList = file.listFiles()
+        for (f in fileList){
+            f.delete()
+        }
+
+        super.onDestroy()
+    }
+
     fun writeImagesInSelectedPath(path : String){
         val newPath = path.replace("/tree/primary:", "${Environment.getExternalStorageDirectory()}/")
 
         for (image in images){
             try {
-                val out = FileOutputStream("${newPath}/${image.name}.png")
+                val out = FileOutputStream("${newPath}/${image.name.removeUnwantedExtension()}.png")
                 image.image.compress(Bitmap.CompressFormat.PNG, 100, out)
             }catch (ex : Exception){
 
             }
         }
+
+        saveUsedPath(newPath)
 
         alert("Success") {
             yesButton {
@@ -88,6 +131,41 @@ class ResultActivity : AppCompatActivity(){
                 finish()
             }
         }.show()
+    }
+
+    fun saveUsedPath(path : String){
+        val usedPath = RecentPaths(path, LocalDate.now())
+
+        val editor = preferences.edit()
+        val gson = Gson()
+
+        val existingArray = preferences.getString("paths",null)
+        existingArray?.let {
+
+            val existingList = gson.fromJson(it, RecentPathList::class.java)
+            if (!(existingList.list.map { it.path }.contains(path))){
+                existingList.list.add(usedPath)
+            }
+
+            val json = gson.toJson(existingList)
+
+            editor.putString("paths", json)
+
+            editor.apply()
+
+        } ?: run {
+
+            val newList = arrayListOf<RecentPaths>()
+            newList.add(usedPath)
+
+            val listObj = RecentPathList(newList)
+
+            val json = gson.toJson(listObj)
+
+            editor.putString("paths", json)
+
+            editor.apply()
+        }
     }
 
     fun deleteAllFiles(){
