@@ -3,44 +3,35 @@ package com.example.instagramphotocropper
 import android.Manifest
 import android.app.Activity
 import android.app.ProgressDialog
+import android.content.ContentUris
 import android.content.Intent
 import android.content.pm.PackageManager
 import android.database.Cursor
 import android.graphics.Bitmap
 import android.graphics.BitmapFactory
 import android.graphics.Color
-import android.graphics.drawable.BitmapDrawable
 import android.net.Uri
 import android.os.*
-import android.provider.LiveFolders.INTENT
 import android.provider.MediaStore
 import android.provider.OpenableColumns
-import android.support.design.widget.Snackbar
 import android.support.v4.app.ActivityCompat
-import android.support.v4.app.LoaderManager
 import android.support.v4.content.ContextCompat
 import android.support.v4.content.FileProvider
 import android.support.v4.content.FileProvider.getUriForFile
 import android.support.v7.app.AppCompatActivity;
 import android.support.v7.widget.GridLayoutManager
-import android.util.Log
 import android.view.Menu
 import android.view.MenuItem
 import android.view.View
 import android.view.WindowManager
-import android.widget.Toast
 
 import kotlinx.android.synthetic.main.activity_main.*
 import java.io.File
 import java.io.FileOutputStream
 import java.lang.Exception
-import android.widget.RelativeLayout
-import android.widget.ProgressBar
-import kotlinx.android.synthetic.main.activity_main.view.*
 import kotlinx.android.synthetic.main.content_main.*
 import org.jetbrains.anko.*
 import java.io.FileDescriptor
-import java.io.FileInputStream
 import kotlin.concurrent.thread
 
 
@@ -55,6 +46,8 @@ class MainActivity : AppCompatActivity() {
     val inPath = "${Environment.getExternalStorageDirectory()}/InstagramScreenshotCropper/ToBeCropped/"
     val outPath = "${Environment.getExternalStorageDirectory()}/InstagramScreenshotCropper/Cropped/"
 
+    val screenshotsPath = "${Environment.getExternalStorageDirectory()}/Pictures/Screenshots/"
+
     lateinit var handler : Handler
 
     val images = arrayListOf<CustomImage>()
@@ -63,12 +56,16 @@ class MainActivity : AppCompatActivity() {
 
     val context = this
 
+    companion object ImageUtils{
+        var originNames = arrayListOf<String>()
+    }
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_main)
         setSupportActionBar(toolbar)
 
-        fab.hide()
+        fab_cut.hide()
         fab_add.hide()
         fab_delete.hide()
 
@@ -98,13 +95,13 @@ class MainActivity : AppCompatActivity() {
                     if(images.isEmpty()){
                         recycler.visibility = View.GONE
                         addFilesImageButton.visibility = View.VISIBLE
-                        fab.hide()
+                        fab_cut.hide()
                         fab_delete.hide()
                         fab_add.hide()
                     }else{
                         recycler.visibility = View.VISIBLE
                         addFilesImageButton.visibility = View.GONE
-                        fab.show()
+                        fab_cut.show()
                         fab_delete.show()
                         fab_add.show()
                     }
@@ -118,7 +115,7 @@ class MainActivity : AppCompatActivity() {
             openFilePicker()
         }
 
-        fab.setOnClickListener { view ->
+        fab_cut.setOnClickListener { view ->
             showLoader()
             thread {
                 cropp()
@@ -139,6 +136,13 @@ class MainActivity : AppCompatActivity() {
                         }
 
                         images.clear()
+
+                        originNames.map { name ->
+                            val oFile = File("$screenshotsPath$name")
+                            deleteImage(oFile)
+                        }
+                        originNames.clear()
+
 
                         handler.sendEmptyMessage(0)
                     }
@@ -169,6 +173,24 @@ class MainActivity : AppCompatActivity() {
         recycler.visibility = View.GONE
     }
 
+    fun deleteImage(image : File){
+        val projection = arrayOf(MediaStore.Images.Media._ID)
+        val selection = "${MediaStore.Images.Media.DATA} = ?"
+        val selectionArgs = arrayOf(image.absolutePath)
+        val queryUri = MediaStore.Images.Media.EXTERNAL_CONTENT_URI
+        val contentResolver = contentResolver
+
+        val cursor = contentResolver.query(queryUri, projection, selection, selectionArgs, null)
+        cursor?.let {
+            if (cursor.moveToFirst()){
+                val id = cursor.getLong(cursor.getColumnIndexOrThrow(MediaStore.Images.Media._ID))
+                val deleteUri = ContentUris.withAppendedId(MediaStore.Images.Media.EXTERNAL_CONTENT_URI, id)
+                contentResolver.delete(deleteUri, null, null)
+            }
+            cursor.close()
+        }
+    }
+
     fun openFilePicker(){
         val intent = Intent()
             .setType("*/*")
@@ -193,6 +215,8 @@ class MainActivity : AppCompatActivity() {
                             val name = getImageName(uri)
 
                             copyBitmapFromUri(uri, name)
+
+                            originNames.add(name)
                         }
                     } else {
                         val uri = data.data
@@ -200,6 +224,8 @@ class MainActivity : AppCompatActivity() {
                         val name = getImageName(uri)
 
                         copyBitmapFromUri(uri, name)
+
+                        originNames.add(name)
                     }
 
                     loadImages()
