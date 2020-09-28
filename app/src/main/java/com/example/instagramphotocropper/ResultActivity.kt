@@ -47,7 +47,7 @@ class ResultActivity : AppCompatActivity(){
         super.onCreate(savedInstanceState)
         setContentView(R.layout.result_activity)
 
-        preferences = getPreferences(Context.MODE_PRIVATE)
+        preferences = getSharedPreferences(getString(R.string.preference_file_key),Context.MODE_PRIVATE)
 
         recyclerResult.layoutManager = GridLayoutManager(this, 3)
         recyclerResult.adapter = GalleryAdapter(images){ imageItem ->
@@ -66,8 +66,6 @@ class ResultActivity : AppCompatActivity(){
         }
 
         fab_move.setOnClickListener {
-
-
             selector("Select the destination folder", pathOptions) { dialogInterface, i ->
                 when(pathOptions[i]){
                     "Select new path" -> {

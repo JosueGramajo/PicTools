@@ -279,11 +279,16 @@ class MainActivity : AppCompatActivity() {
 
         when (item.itemId) {
             R.id.action_settings -> {
-                val dir = getExternalFilesDir("file://${Environment.getExternalStorageDirectory()}/InstagramScreenshotCropper/")
+                /*val dir = getExternalFilesDir("file://${Environment.getExternalStorageDirectory()}/InstagramScreenshotCropper/")
                 val intent = Intent(Intent.ACTION_VIEW)
                 val mydir = getUriForFile(this, "com.example.instagramphotocropper.fileprovider", dir)
                 intent.setDataAndType(mydir, "resource/folder")
-                startActivity(intent);
+                intent.setFlags(Intent.FLAG_ACTIVITY_NO_HISTORY)
+
+                this.startActivity(Intent.createChooser(intent, "Open folder"));*/
+
+                startActivity(Intent(context, DestinationsManagementActivity::class.java))
+
             }
 
             else -> super.onOptionsItemSelected(item)
@@ -351,7 +356,7 @@ class MainActivity : AppCompatActivity() {
                     yToStart = y
                 }
 
-                if (whiteNumber > 1000 && mode.equals("middle")){
+                if (whiteNumber > (i.image.width * 0.99) && mode.equals("middle")){
                     yToFinish = y
 
                     break@heightLoop
