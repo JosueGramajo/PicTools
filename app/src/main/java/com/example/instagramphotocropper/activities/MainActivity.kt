@@ -1,9 +1,10 @@
-package com.example.instagramphotocropper
+package com.example.instagramphotocropper.activities
 
 import android.Manifest
 import android.app.Activity
 import android.app.ProgressDialog
 import android.content.ContentUris
+import android.content.ContextWrapper
 import android.content.Intent
 import android.content.pm.PackageManager
 import android.database.Cursor
@@ -17,13 +18,19 @@ import android.provider.OpenableColumns
 import android.support.v4.app.ActivityCompat
 import android.support.v4.content.ContextCompat
 import android.support.v4.content.FileProvider
-import android.support.v4.content.FileProvider.getUriForFile
 import android.support.v7.app.AppCompatActivity;
 import android.support.v7.widget.GridLayoutManager
 import android.view.Menu
 import android.view.MenuItem
 import android.view.View
 import android.view.WindowManager
+import com.example.instagramphotocropper.*
+import com.example.instagramphotocropper.adapters.GalleryAdapter
+import com.example.instagramphotocropper.objects.CustomImage
+import com.example.instagramphotocropper.objects.PixelColor
+import com.example.instagramphotocropper.utils.RealPathUtil
+import com.example.instagramphotocropper.utils.UserDefaultsUtils
+import com.example.instagramphotocropper.utils.removeUnwantedExtension
 
 import kotlinx.android.synthetic.main.activity_main.*
 import java.io.File
@@ -60,6 +67,10 @@ class MainActivity : AppCompatActivity() {
         var originNames = arrayListOf<String>()
     }
 
+    var pathOptions = arrayListOf<String>()
+
+    lateinit var userDefaultsUtils : UserDefaultsUtils
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_main)
@@ -68,8 +79,13 @@ class MainActivity : AppCompatActivity() {
         fab_cut.hide()
         fab_add.hide()
         fab_delete.hide()
+        fab_move_prior.hide()
 
         verifyFolders()
+
+        userDefaultsUtils = UserDefaultsUtils(this.context)
+
+        pathOptions = userDefaultsUtils.getPaths()
 
         if (ContextCompat.checkSelfPermission(this, Manifest.permission.READ_EXTERNAL_STORAGE) != PackageManager.PERMISSION_GRANTED) {
             ActivityCompat.requestPermissions(this, arrayOf(Manifest.permission.READ_EXTERNAL_STORAGE, Manifest.permission.WRITE_EXTERNAL_STORAGE), MY_PERMISSIONS_REQUEST)
@@ -98,12 +114,14 @@ class MainActivity : AppCompatActivity() {
                         fab_cut.hide()
                         fab_delete.hide()
                         fab_add.hide()
+                        fab_move_prior.hide()
                     }else{
                         recycler.visibility = View.VISIBLE
                         addFilesImageButton.visibility = View.GONE
                         fab_cut.show()
                         fab_delete.show()
                         fab_add.show()
+                        fab_move_prior.show()
                     }
                 }
 
@@ -155,21 +173,35 @@ class MainActivity : AppCompatActivity() {
             openFilePicker()
         }
 
-        recycler.layoutManager = GridLayoutManager(this,3)
-        recycler.adapter = GalleryAdapter(images){ imageItem ->
-            selector("Select an option", itemOptions) { dialogInterface, i ->
-                when(itemOptions[i]){
-                    "Remove" -> {
-                        val file = File(imageItem.path)
-                        file.delete()
-
-                        images.removeIf { it.name.equals(imageItem.name) }
-
-                        recycler.adapter!!.notifyDataSetChanged()
+        fab_move_prior.setOnClickListener {
+            selector("Select the destination folder", pathOptions) { dialogInterface, i ->
+                when(pathOptions[i]){
+                    "Select new path" -> {
+                        openDirectoryPicker()
+                    }
+                    else -> {
+                        writeImagesInSelectedPath(pathOptions[i])
                     }
                 }
             }
         }
+
+        recycler.layoutManager = GridLayoutManager(this,3)
+        recycler.adapter =
+            GalleryAdapter(images) { imageItem ->
+                selector("Select an option", itemOptions) { dialogInterface, i ->
+                    when (itemOptions[i]) {
+                        "Remove" -> {
+                            val file = File(imageItem.path)
+                            file.delete()
+
+                            images.removeIf { it.name.equals(imageItem.name) }
+
+                            recycler.adapter!!.notifyDataSetChanged()
+                        }
+                    }
+                }
+            }
         recycler.visibility = View.GONE
     }
 
@@ -189,6 +221,31 @@ class MainActivity : AppCompatActivity() {
             }
             cursor.close()
         }
+    }
+
+    fun openDirectoryPicker(){
+        val intent = Intent(Intent.ACTION_OPEN_DOCUMENT_TREE)
+        intent.addCategory(Intent.CATEGORY_DEFAULT)
+        startActivityForResult(Intent.createChooser(intent, "Select destination folder"), 9)
+    }
+
+    fun writeImagesInSelectedPath(path : String){
+        val newPath = path.replace("/tree/primary:", "${Environment.getExternalStorageDirectory()}/")
+
+        for (image in images){
+            try {
+                val out = FileOutputStream("${newPath}/${image.name.removeUnwantedExtension()}.png")
+                image.image.compress(Bitmap.CompressFormat.PNG, 100, out)
+            }catch (ex : Exception){
+
+            }
+        }
+
+        userDefaultsUtils.savePath(newPath)
+
+        alert("Success") {
+            yesButton {}
+        }.show()
     }
 
     fun openFilePicker(){
@@ -233,6 +290,11 @@ class MainActivity : AppCompatActivity() {
                     handler.sendEmptyMessage(0)
                 }
             }
+        }else if (requestCode == 9){
+            val uri = data!!.data
+            val path = uri.path
+
+            writeImagesInSelectedPath(path)
         }
     }
 
@@ -257,6 +319,12 @@ class MainActivity : AppCompatActivity() {
 
         val out = FileOutputStream("${inPath}${name}")
         image.compress(Bitmap.CompressFormat.PNG, 100, out)
+
+        val realPath = RealPathUtil.getRealPath(this, uri)
+        val originalFile = File(realPath)
+        if (originalFile.exists()){
+            originalFile.delete()
+        }
     }
 
     fun verifyFolders() {
@@ -339,7 +407,12 @@ class MainActivity : AppCompatActivity() {
                             invalidColors.firstOrNull { it.color == red }?.let {
                                 it.amount += 1
                             } ?: kotlin.run {
-                                invalidColors.add(PixelColor(red, 1))
+                                invalidColors.add(
+                                    PixelColor(
+                                        red,
+                                        1
+                                    )
+                                )
                             }
                         }
                     }
@@ -382,7 +455,13 @@ class MainActivity : AppCompatActivity() {
         val fileList = file.listFiles()
         for (f in fileList){
             bitmapList.add(BitmapFactory.decodeFile(f.path))
-            images.add(CustomImage(f.name, f.path, BitmapFactory.decodeFile(f.path)))
+            images.add(
+                CustomImage(
+                    f.name,
+                    f.path,
+                    BitmapFactory.decodeFile(f.path)
+                )
+            )
         }
     }
 }

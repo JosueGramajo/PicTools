@@ -1,19 +1,24 @@
-package com.example.instagramphotocropper
+package com.example.instagramphotocropper.adapters
 
 import android.content.Context
-import android.graphics.Bitmap
 import android.support.v7.widget.RecyclerView
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
 import android.widget.ImageView
 import android.widget.TextView
+import com.example.instagramphotocropper.objects.CustomImage
+import com.example.instagramphotocropper.R
+import com.example.instagramphotocropper.objects.RecentPathList
 import com.google.gson.Gson
 
 class GalleryAdapter(val list : List<CustomImage>, val itemClick : (CustomImage) -> Unit) : RecyclerView.Adapter<GalleryAdapter.ViewHolder>(){
     override fun onCreateViewHolder(p0: ViewGroup, p1: Int): ViewHolder {
         val layoutInflater = LayoutInflater.from(p0.context).inflate(R.layout.cell, p0, false)
-        return ViewHolder(layoutInflater, itemClick)
+        return ViewHolder(
+            layoutInflater,
+            itemClick
+        )
     }
 
     override fun onBindViewHolder(holder: ViewHolder, p1: Int) = holder.bind(list[p1])
@@ -35,7 +40,9 @@ class GalleryAdapter(val list : List<CustomImage>, val itemClick : (CustomImage)
 class DestinationAdapter(val list : ArrayList<String>, val context : Context) : RecyclerView.Adapter<DestinationAdapter.ViewHolder>(){
     override fun onCreateViewHolder(p0: ViewGroup, p1: Int): ViewHolder {
         val layoutFilter = LayoutInflater.from(p0.context).inflate(R.layout.destination_cell, p0, false)
-        return ViewHolder(layoutFilter)
+        return ViewHolder(
+            layoutFilter
+        )
     }
 
     override fun getItemCount(): Int = list.count()

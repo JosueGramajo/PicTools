@@ -1,4 +1,4 @@
-package com.example.instagramphotocropper
+package com.example.instagramphotocropper.utils
 
 fun String.remove(vararg characters : String) : String{
     var result = this

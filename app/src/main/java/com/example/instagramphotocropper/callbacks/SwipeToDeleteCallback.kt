@@ -6,7 +6,7 @@ import android.graphics.drawable.ColorDrawable
 import android.support.v4.content.ContextCompat
 import android.support.v7.widget.RecyclerView
 import android.support.v7.widget.helper.ItemTouchHelper
-import com.example.instagramphotocropper.DestinationAdapter
+import com.example.instagramphotocropper.adapters.DestinationAdapter
 import com.example.instagramphotocropper.R
 
 class SwipeToDeleteCallback(val adapter: DestinationAdapter) :

@@ -1,6 +1,5 @@
-package com.example.instagramphotocropper
+package com.example.instagramphotocropper.activities
 
-import android.app.ProgressDialog
 import android.content.Context
 import android.content.Intent
 import android.content.SharedPreferences
@@ -8,28 +7,24 @@ import android.graphics.Bitmap
 import android.graphics.BitmapFactory
 import android.os.Bundle
 import android.os.Environment
-import android.os.Handler
-import android.os.Message
-import android.provider.DocumentsContract
 import android.support.v7.app.AppCompatActivity
 import android.support.v7.widget.GridLayoutManager
-import android.view.KeyEvent
-import android.view.View
-import android.view.WindowManager
-import android.widget.Gallery
+import com.example.instagramphotocropper.*
+import com.example.instagramphotocropper.adapters.GalleryAdapter
+import com.example.instagramphotocropper.objects.CustomImage
+import com.example.instagramphotocropper.objects.RecentPathList
+import com.example.instagramphotocropper.objects.RecentPaths
+import com.example.instagramphotocropper.utils.UserDefaultsUtils
+import com.example.instagramphotocropper.utils.removeUnwantedExtension
 import com.google.gson.Gson
-import kotlinx.android.synthetic.main.activity_main.*
-import kotlinx.android.synthetic.main.content_main.*
 import kotlinx.android.synthetic.main.result_activity.*
 import org.jetbrains.anko.alert
 import org.jetbrains.anko.selector
-import org.jetbrains.anko.toast
 import org.jetbrains.anko.yesButton
 import java.io.File
 import java.io.FileOutputStream
 import java.lang.Exception
 import java.time.LocalDate
-import kotlin.concurrent.thread
 
 class ResultActivity : AppCompatActivity(){
 
@@ -39,31 +34,32 @@ class ResultActivity : AppCompatActivity(){
 
     val itemOptions = listOf("Remove")
 
-    val pathOptions = arrayListOf<String>("Select new path")
+    var pathOptions = arrayListOf<String>()
 
-    lateinit  var preferences : SharedPreferences
+    lateinit var userDefaultsUtils : UserDefaultsUtils
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.result_activity)
 
-        preferences = getSharedPreferences(getString(R.string.preference_file_key),Context.MODE_PRIVATE)
+        userDefaultsUtils = UserDefaultsUtils(this)
 
         recyclerResult.layoutManager = GridLayoutManager(this, 3)
-        recyclerResult.adapter = GalleryAdapter(images){ imageItem ->
-            selector("Select an option", itemOptions) { dialogInterface, i ->
-                when(itemOptions[i]){
-                    "Remove" -> {
-                        val file = File(imageItem.path)
-                        file.delete()
+        recyclerResult.adapter =
+            GalleryAdapter(images) { imageItem ->
+                selector("Select an option", itemOptions) { dialogInterface, i ->
+                    when (itemOptions[i]) {
+                        "Remove" -> {
+                            val file = File(imageItem.path)
+                            file.delete()
 
-                        images.removeIf { it.name.equals(imageItem.name) }
+                            images.removeIf { it.name.equals(imageItem.name) }
 
-                        recyclerResult.adapter!!.notifyDataSetChanged()
+                            recyclerResult.adapter!!.notifyDataSetChanged()
+                        }
                     }
                 }
             }
-        }
 
         fab_move.setOnClickListener {
             selector("Select the destination folder", pathOptions) { dialogInterface, i ->
@@ -83,14 +79,7 @@ class ResultActivity : AppCompatActivity(){
             deleteAllFiles()
         }
 
-        val existingArray = preferences.getString("paths",null)
-        existingArray?.let { existing ->
-            val gson = Gson()
-            val existingList = gson.fromJson(existing, RecentPathList::class.java)
-            existingList.list.map {
-                pathOptions.add(it.path)
-            }
-        }
+        pathOptions = userDefaultsUtils.getPaths()
 
         loadImages()
     }
@@ -121,7 +110,7 @@ class ResultActivity : AppCompatActivity(){
             }
         }
 
-        saveUsedPath(newPath)
+        userDefaultsUtils.savePath(newPath)
 
         alert("Success") {
             yesButton {
@@ -129,41 +118,6 @@ class ResultActivity : AppCompatActivity(){
                 finish()
             }
         }.show()
-    }
-
-    fun saveUsedPath(path : String){
-        val usedPath = RecentPaths(path, LocalDate.now())
-
-        val editor = preferences.edit()
-        val gson = Gson()
-
-        val existingArray = preferences.getString("paths",null)
-        existingArray?.let {
-
-            val existingList = gson.fromJson(it, RecentPathList::class.java)
-            if (!(existingList.list.map { it.path }.contains(path))){
-                existingList.list.add(usedPath)
-            }
-
-            val json = gson.toJson(existingList)
-
-            editor.putString("paths", json)
-
-            editor.apply()
-
-        } ?: run {
-
-            val newList = arrayListOf<RecentPaths>()
-            newList.add(usedPath)
-
-            val listObj = RecentPathList(newList)
-
-            val json = gson.toJson(listObj)
-
-            editor.putString("paths", json)
-
-            editor.apply()
-        }
     }
 
     fun deleteAllFiles(){
@@ -202,7 +156,13 @@ class ResultActivity : AppCompatActivity(){
         val fileList = file.listFiles()
         for (f in fileList){
             bitmapList.add(BitmapFactory.decodeFile(f.path))
-            images.add(CustomImage(f.name, f.path, BitmapFactory.decodeFile(f.path)))
+            images.add(
+                CustomImage(
+                    f.name,
+                    f.path,
+                    BitmapFactory.decodeFile(f.path)
+                )
+            )
         }
 
         recyclerResult.adapter!!.notifyDataSetChanged()

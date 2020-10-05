@@ -1,9 +1,6 @@
-package com.example.instagramphotocropper
+package com.example.instagramphotocropper.objects
 
-import android.content.Context
 import android.graphics.Bitmap
-import android.support.v7.widget.AppCompatImageView
-import android.util.AttributeSet
 import java.time.LocalDate
 import java.util.*
 

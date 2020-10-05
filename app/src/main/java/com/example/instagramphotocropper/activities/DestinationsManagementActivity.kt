@@ -1,12 +1,13 @@
-package com.example.instagramphotocropper
+package com.example.instagramphotocropper.activities
 
 import android.content.Context
-import android.content.SharedPreferences
 import android.os.Bundle
-import android.os.PersistableBundle
 import android.support.v7.app.AppCompatActivity
 import android.support.v7.widget.LinearLayoutManager
 import android.support.v7.widget.helper.ItemTouchHelper
+import com.example.instagramphotocropper.adapters.DestinationAdapter
+import com.example.instagramphotocropper.R
+import com.example.instagramphotocropper.objects.RecentPathList
 import com.example.instagramphotocropper.callbacks.SwipeToDeleteCallback
 import com.google.gson.Gson
 import kotlinx.android.synthetic.main.destination_management_activity.*
@@ -31,7 +32,11 @@ class DestinationsManagementActivity : AppCompatActivity() {
             }
         }
 
-        val mAdapter = DestinationAdapter(paths, this@DestinationsManagementActivity)
+        val mAdapter =
+            DestinationAdapter(
+                paths,
+                this@DestinationsManagementActivity
+            )
         destinationRecyclerView.adapter = mAdapter
         destinationRecyclerView.layoutManager = LinearLayoutManager(this)
         val itemTouchHelper = ItemTouchHelper(SwipeToDeleteCallback(mAdapter))

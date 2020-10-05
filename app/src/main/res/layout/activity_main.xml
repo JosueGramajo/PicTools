@@ -5,7 +5,7 @@
         xmlns:tools="http://schemas.android.com/tools"
         android:layout_width="match_parent"
         android:layout_height="match_parent"
-        tools:context=".MainActivity">
+        tools:context=".activities.MainActivity">
 
     <android.support.design.widget.AppBarLayout
             android:layout_height="wrap_content"
@@ -22,6 +22,17 @@
     </android.support.design.widget.AppBarLayout>
 
     <include layout="@layout/content_main"/>
+
+    <android.support.design.widget.FloatingActionButton
+            android:id="@+id/fab_move_prior"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_gravity="bottom|end"
+            android:layout_marginBottom="210dp"
+            android:layout_marginRight="16dp"
+            app:srcCompat="@drawable/ic_action_arrow"
+            android:backgroundTint="@color/purple"
+            />
 
     <android.support.design.widget.FloatingActionButton
             android:id="@+id/fab_delete"
