@@ -7,8 +7,8 @@ import android.graphics.Bitmap
 import android.graphics.BitmapFactory
 import android.os.Bundle
 import android.os.Environment
-import android.support.v7.app.AppCompatActivity
-import android.support.v7.widget.GridLayoutManager
+import androidx.appcompat.app.AppCompatActivity
+import androidx.recyclerview.widget.GridLayoutManager
 import com.example.instagramphotocropper.*
 import com.example.instagramphotocropper.adapters.GalleryAdapter
 import com.example.instagramphotocropper.objects.CustomImage
@@ -50,12 +50,16 @@ class ResultActivity : AppCompatActivity(){
                 selector("Select an option", itemOptions) { dialogInterface, i ->
                     when (itemOptions[i]) {
                         "Remove" -> {
+                            //TODO: DELETE WITH URI
+
+                            /*
                             val file = File(imageItem.path)
                             file.delete()
 
                             images.removeIf { it.name.equals(imageItem.name) }
 
                             recyclerResult.adapter!!.notifyDataSetChanged()
+                             */
                         }
                     }
                 }
@@ -81,7 +85,7 @@ class ResultActivity : AppCompatActivity(){
 
         pathOptions = userDefaultsUtils.getPaths()
 
-        loadImages()
+        //loadImages()
     }
 
     override fun onBackPressed() {
@@ -98,8 +102,8 @@ class ResultActivity : AppCompatActivity(){
         super.onDestroy()
     }
 
-    fun writeImagesInSelectedPath(path : String){
-        val newPath = path.replace("/tree/primary:", "${Environment.getExternalStorageDirectory()}/")
+    fun writeImagesInSelectedPath(path : String?){
+        val newPath = path!!.replace("/tree/primary:", "${Environment.getExternalStorageDirectory()}/")
 
         for (image in images){
             try {
@@ -142,12 +146,15 @@ class ResultActivity : AppCompatActivity(){
         super.onActivityResult(requestCode, resultCode, data)
         if (requestCode == 9){
             val uri = data!!.data
-            val path = uri.path
+            val path = uri!!.path
 
             writeImagesInSelectedPath(path)
         }
     }
 
+
+    //TODO: LOAD IMAGES
+    /*
     fun loadImages(){
         images.clear()
 
@@ -167,4 +174,6 @@ class ResultActivity : AppCompatActivity(){
 
         recyclerResult.adapter!!.notifyDataSetChanged()
     }
+
+     */
 }

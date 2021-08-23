@@ -15,15 +15,15 @@ import android.net.Uri
 import android.os.*
 import android.provider.MediaStore
 import android.provider.OpenableColumns
-import android.support.v4.app.ActivityCompat
-import android.support.v4.content.ContextCompat
-import android.support.v4.content.FileProvider
-import android.support.v7.app.AppCompatActivity;
-import android.support.v7.widget.GridLayoutManager
+import androidx.core.app.ActivityCompat
+import androidx.core.content.ContextCompat
+import androidx.core.content.FileProvider
+import androidx.appcompat.app.AppCompatActivity;
 import android.view.Menu
 import android.view.MenuItem
 import android.view.View
 import android.view.WindowManager
+import androidx.recyclerview.widget.GridLayoutManager
 import com.example.instagramphotocropper.*
 import com.example.instagramphotocropper.adapters.GalleryAdapter
 import com.example.instagramphotocropper.objects.CustomImage
@@ -93,7 +93,8 @@ class MainActivity : AppCompatActivity() {
             thread {
                 showLoader()
 
-                loadImages()
+                //TODO: Do this async
+                //loadImages()
 
                 handler.sendEmptyMessage(0)
             }
@@ -136,7 +137,9 @@ class MainActivity : AppCompatActivity() {
         fab_cut.setOnClickListener { view ->
             showLoader()
             thread {
-                cropp()
+                for (i in images){
+                    cropp(i)
+                }
 
                 handler.sendEmptyMessage(5)
             }
@@ -192,12 +195,11 @@ class MainActivity : AppCompatActivity() {
                 selector("Select an option", itemOptions) { dialogInterface, i ->
                     when (itemOptions[i]) {
                         "Remove" -> {
-                            val file = File(imageItem.path)
-                            file.delete()
+                            deleteFileInUri(imageItem.uri)
 
-                            images.removeIf { it.name.equals(imageItem.name) }
+                            images.removeIf { it.name == imageItem.name }
 
-                            recycler.adapter!!.notifyDataSetChanged()
+                            handler.sendEmptyMessage(0)
                         }
                     }
                 }
@@ -229,8 +231,8 @@ class MainActivity : AppCompatActivity() {
         startActivityForResult(Intent.createChooser(intent, "Select destination folder"), 9)
     }
 
-    fun writeImagesInSelectedPath(path : String){
-        val newPath = path.replace("/tree/primary:", "${Environment.getExternalStorageDirectory()}/")
+    fun writeImagesInSelectedPath(path : String?){
+        val newPath = path!!.replace("/tree/primary:", "${Environment.getExternalStorageDirectory()}/")
 
         for (image in images){
             try {
@@ -267,44 +269,60 @@ class MainActivity : AppCompatActivity() {
                 data?.let {
                     if (null != it.clipData) {
                         for (i in 0 until it.clipData!!.itemCount) {
-                            val uri = it.clipData!!.getItemAt(i).uri
+                            doAsync {
+                                val uri = it.clipData!!.getItemAt(i).uri
 
-                            val name = getImageName(uri)
+                                //TODO:REMOVE THIS
+                                val name = getImageName(uri)
 
-                            copyBitmapFromUri(uri, name)
 
-                            originNames.add(name)
+                                loadImage(uri)
+
+                                /*val name = getImageName(uri)
+
+                                copyBitmapFromUri(uri, name)*/
+
+                                originNames.add(name)
+
+                                handler.sendEmptyMessage(0)
+                            }
                         }
                     } else {
                         val uri = data.data
 
+                        loadImage(uri)
+
+                        //TODO: REMOVE THIS
                         val name = getImageName(uri)
 
-                        copyBitmapFromUri(uri, name)
+                        //copyBitmapFromUri(uri, name)
 
                         originNames.add(name)
+
+                        handler.sendEmptyMessage(0)
                     }
 
-                    loadImages()
+                    //loadImages()
 
-                    handler.sendEmptyMessage(0)
+
                 }
             }
         }else if (requestCode == 9){
             val uri = data!!.data
-            val path = uri.path
+            val path = uri!!.path
 
             writeImagesInSelectedPath(path)
         }
     }
 
-    fun getImageName(uri: Uri) : String{
+    private fun getImageName(uri: Uri?) : String{
+        uri?.let {
+            val cursor: Cursor? = contentResolver.query( uri, null, null, null, null, null)
 
-        val cursor: Cursor? = contentResolver.query( uri, null, null, null, null, null)
-
-        cursor?.use {
-            if (it.moveToFirst()) {
-                return it.getString(it.getColumnIndex(OpenableColumns.DISPLAY_NAME))
+            cursor?.use {
+                if (it.moveToFirst()) {
+                    return it.getString(it.getColumnIndex(OpenableColumns.DISPLAY_NAME))
+                }
             }
         }
 
@@ -378,22 +396,20 @@ class MainActivity : AppCompatActivity() {
         getWindow().clearFlags(WindowManager.LayoutParams.FLAG_NOT_TOUCHABLE);
     }
 
-    fun cropp(){
-
-        for (i in images){
-
+    fun cropp(img : CustomImage){
+        try {
             var yToStart = 0
             var yToFinish = 0
 
             var mode = "topLine"
 
-            heightLoop@ for (y in 1..(i.image.height - 1)){
+            heightLoop@ for (y in 1..(img.image.height - 1)){
                 var whiteNumber = 0
 
                 invalidColors.clear()
 
-                for (x in 1..(i.image.width - 1)){
-                    val pixel = i.image.getPixel(x, y)
+                for (x in 1 until img.image.width){
+                    val pixel = img.image.getPixel(x, y)
 
                     val red = Color.red(pixel)
                     val blue = Color.blue(pixel)
@@ -429,7 +445,7 @@ class MainActivity : AppCompatActivity() {
                     yToStart = y
                 }
 
-                if (whiteNumber > (i.image.width * 0.99) && mode.equals("middle")){
+                if (whiteNumber > (img.image.width * 0.99) && mode.equals("middle")){
                     yToFinish = y
 
                     break@heightLoop
@@ -437,17 +453,38 @@ class MainActivity : AppCompatActivity() {
             }
 
 
-            val resizedbitmap1 = Bitmap.createBitmap(i.image, 0, yToStart, 1080, yToFinish - yToStart);
-            try {
-                val out = FileOutputStream("${outPath}${i.name.removeUnwantedExtension()}.png")
-                resizedbitmap1.compress(Bitmap.CompressFormat.PNG, 100, out)
-            }catch (ex : Exception){
+            val resizedbitmap1 = Bitmap.createBitmap(img.image, 0, yToStart, 1080, yToFinish - yToStart);
 
-            }
+            val out = FileOutputStream("${outPath}${img.name.removeUnwantedExtension()}.png")
+            resizedbitmap1.compress(Bitmap.CompressFormat.PNG, 100, out)
+        }catch (ex : Exception){
+
+        }
+
+    }
+
+    fun loadImage(uri : Uri?){
+        uri?.let {
+            val bitmap = MediaStore.Images.Media.getBitmap(this.contentResolver, uri)
+            val name = getImageName(uri)
+            images.add(
+                CustomImage(
+                    name,
+                    uri,
+                    bitmap
+                )
+            )
         }
     }
 
-    fun loadImages(){
+    fun deleteFileInUri(uri : Uri){
+        val fileToDelete = File(uri.path)
+        if (fileToDelete.exists()){
+            fileToDelete.delete()
+        }
+    }
+
+    /*fun loadImages(){
         images.clear()
 
         val bitmapList = arrayListOf<Bitmap>()
@@ -463,7 +500,7 @@ class MainActivity : AppCompatActivity() {
                 )
             )
         }
-    }
+    }*/
 }
 
 class GenericFileProvider : FileProvider() {}
