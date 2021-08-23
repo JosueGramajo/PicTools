@@ -3,19 +3,24 @@ package com.example.instagramphotocropper.activities
 import android.content.Context
 import android.os.Bundle
 import androidx.appcompat.app.AppCompatActivity
+import androidx.databinding.DataBindingUtil
 import androidx.recyclerview.widget.ItemTouchHelper
 import androidx.recyclerview.widget.LinearLayoutManager
 import com.example.instagramphotocropper.adapters.DestinationAdapter
 import com.example.instagramphotocropper.R
 import com.example.instagramphotocropper.objects.RecentPathList
 import com.example.instagramphotocropper.callbacks.SwipeToDeleteCallback
+import com.example.instagramphotocropper.databinding.DestinationManagementActivityBinding
 import com.google.gson.Gson
-import kotlinx.android.synthetic.main.destination_management_activity.*
 
 class DestinationsManagementActivity : AppCompatActivity() {
+
+    lateinit var binding : DestinationManagementActivityBinding
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        setContentView(R.layout.destination_management_activity)
+
+        binding = DataBindingUtil.setContentView(this, R.layout.destination_management_activity)
 
         setUpRecyclerView()
     }
@@ -37,9 +42,9 @@ class DestinationsManagementActivity : AppCompatActivity() {
                 paths,
                 this@DestinationsManagementActivity
             )
-        destinationRecyclerView.adapter = mAdapter
-        destinationRecyclerView.layoutManager = LinearLayoutManager(this)
+        binding.destinationRecyclerView.adapter = mAdapter
+        binding.destinationRecyclerView.layoutManager = LinearLayoutManager(this)
         val itemTouchHelper = ItemTouchHelper(SwipeToDeleteCallback(mAdapter))
-        itemTouchHelper.attachToRecyclerView(destinationRecyclerView)
+        itemTouchHelper.attachToRecyclerView(binding.destinationRecyclerView)
     }
 }

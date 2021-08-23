@@ -1,5 +1,6 @@
 package com.example.instagramphotocropper.activities
 
+import android.app.AlertDialog
 import android.content.Context
 import android.content.Intent
 import android.content.SharedPreferences
@@ -8,25 +9,25 @@ import android.graphics.BitmapFactory
 import android.os.Bundle
 import android.os.Environment
 import androidx.appcompat.app.AppCompatActivity
+import androidx.databinding.DataBindingUtil
 import androidx.recyclerview.widget.GridLayoutManager
 import com.example.instagramphotocropper.*
 import com.example.instagramphotocropper.adapters.GalleryAdapter
+import com.example.instagramphotocropper.databinding.ResultActivityBinding
 import com.example.instagramphotocropper.objects.CustomImage
 import com.example.instagramphotocropper.objects.RecentPathList
 import com.example.instagramphotocropper.objects.RecentPaths
 import com.example.instagramphotocropper.utils.UserDefaultsUtils
 import com.example.instagramphotocropper.utils.removeUnwantedExtension
 import com.google.gson.Gson
-import kotlinx.android.synthetic.main.result_activity.*
-import org.jetbrains.anko.alert
-import org.jetbrains.anko.selector
-import org.jetbrains.anko.yesButton
 import java.io.File
 import java.io.FileOutputStream
 import java.lang.Exception
 import java.time.LocalDate
 
-class ResultActivity : AppCompatActivity(){
+class ResultActivity : BaseActivity(){
+
+    lateinit var binding : ResultActivityBinding
 
     val images = arrayListOf<CustomImage>()
 
@@ -40,15 +41,17 @@ class ResultActivity : AppCompatActivity(){
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        setContentView(R.layout.result_activity)
+        binding = DataBindingUtil.setContentView(this, R.layout.result_activity)
 
         userDefaultsUtils = UserDefaultsUtils(this)
 
-        recyclerResult.layoutManager = GridLayoutManager(this, 3)
-        recyclerResult.adapter =
+        binding.recyclerResult.layoutManager = GridLayoutManager(this, 3)
+        binding.recyclerResult.adapter =
             GalleryAdapter(images) { imageItem ->
-                selector("Select an option", itemOptions) { dialogInterface, i ->
-                    when (itemOptions[i]) {
+                val alert = AlertDialog.Builder(this)
+                alert.setTitle("Select an option")
+                alert.setItems(itemOptions.toTypedArray()) { dialog, which ->
+                    when(itemOptions[which]){
                         "Remove" -> {
                             //TODO: DELETE WITH URI
 
@@ -61,25 +64,29 @@ class ResultActivity : AppCompatActivity(){
                             recyclerResult.adapter!!.notifyDataSetChanged()
                              */
                         }
+                        else -> {}
                     }
                 }
+                alert.show()
             }
 
-        fab_move.setOnClickListener {
-            selector("Select the destination folder", pathOptions) { dialogInterface, i ->
-                when(pathOptions[i]){
+        binding.fabMove.setOnClickListener {
+            val alert = AlertDialog.Builder(this)
+            alert.setTitle("Select the destination folder")
+            alert.setItems(pathOptions.toTypedArray()) { dialog, which ->
+                when(pathOptions[which]){
                     "Select new path" -> {
                         openDirectoryPicker()
                     }
                     else -> {
-                        writeImagesInSelectedPath(pathOptions[i])
+                        writeImagesInSelectedPath(pathOptions[which])
                     }
                 }
             }
-
+            alert.show()
         }
 
-        fab_delete_results.setOnClickListener {
+        binding.fabDeleteResults.setOnClickListener {
             deleteAllFiles()
         }
 
@@ -108,7 +115,7 @@ class ResultActivity : AppCompatActivity(){
         for (image in images){
             try {
                 val out = FileOutputStream("${newPath}/${image.name.removeUnwantedExtension()}.png")
-                image.image.compress(Bitmap.CompressFormat.PNG, 100, out)
+                image.image!!.compress(Bitmap.CompressFormat.PNG, 100, out)
             }catch (ex : Exception){
 
             }
@@ -116,12 +123,10 @@ class ResultActivity : AppCompatActivity(){
 
         userDefaultsUtils.savePath(newPath)
 
-        alert("Success") {
-            yesButton {
-                deleteAllFiles()
-                finish()
-            }
-        }.show()
+        showAlert("Success", this){
+            deleteAllFiles()
+            finish()
+        }
     }
 
     fun deleteAllFiles(){
@@ -133,7 +138,7 @@ class ResultActivity : AppCompatActivity(){
 
         images.clear()
 
-        recyclerResult.adapter!!.notifyDataSetChanged()
+        binding.recyclerResult.adapter!!.notifyDataSetChanged()
     }
 
     fun openDirectoryPicker(){

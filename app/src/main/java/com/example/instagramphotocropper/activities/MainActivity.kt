@@ -2,6 +2,7 @@ package com.example.instagramphotocropper.activities
 
 import android.Manifest
 import android.app.Activity
+import android.app.AlertDialog
 import android.app.ProgressDialog
 import android.content.ContentUris
 import android.content.ContextWrapper
@@ -23,26 +24,26 @@ import android.view.Menu
 import android.view.MenuItem
 import android.view.View
 import android.view.WindowManager
+import androidx.databinding.DataBindingUtil
 import androidx.recyclerview.widget.GridLayoutManager
 import com.example.instagramphotocropper.*
 import com.example.instagramphotocropper.adapters.GalleryAdapter
+import com.example.instagramphotocropper.databinding.ActivityMainBinding
 import com.example.instagramphotocropper.objects.CustomImage
 import com.example.instagramphotocropper.objects.PixelColor
 import com.example.instagramphotocropper.utils.RealPathUtil
 import com.example.instagramphotocropper.utils.UserDefaultsUtils
 import com.example.instagramphotocropper.utils.removeUnwantedExtension
-
-import kotlinx.android.synthetic.main.activity_main.*
 import java.io.File
 import java.io.FileOutputStream
 import java.lang.Exception
-import kotlinx.android.synthetic.main.content_main.*
-import org.jetbrains.anko.*
 import java.io.FileDescriptor
 import kotlin.concurrent.thread
+import com.google.gson.GsonBuilder
 
+class MainActivity : BaseActivity() {
 
-class MainActivity : AppCompatActivity() {
+    lateinit var binding : ActivityMainBinding
 
     val MY_PERMISSIONS_REQUEST = 0
 
@@ -73,13 +74,15 @@ class MainActivity : AppCompatActivity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        setContentView(R.layout.activity_main)
-        setSupportActionBar(toolbar)
 
-        fab_cut.hide()
-        fab_add.hide()
-        fab_delete.hide()
-        fab_move_prior.hide()
+        binding = DataBindingUtil.setContentView(this, R.layout.activity_main)
+
+        setSupportActionBar(binding.toolbar)
+
+        binding.fabCut.hide()
+        binding.fabAdd.hide()
+        binding.fabDelete.hide()
+        binding.fabMovePrior.hide()
 
         verifyFolders()
 
@@ -107,22 +110,22 @@ class MainActivity : AppCompatActivity() {
                 if (msg.what == 5){
                     startActivity(Intent(context, ResultActivity::class.java))
                 }else{
-                    recycler.adapter!!.notifyDataSetChanged()
+                    binding.recycler.adapter!!.notifyDataSetChanged()
 
                     if(images.isEmpty()){
-                        recycler.visibility = View.GONE
-                        addFilesImageButton.visibility = View.VISIBLE
-                        fab_cut.hide()
-                        fab_delete.hide()
-                        fab_add.hide()
-                        fab_move_prior.hide()
+                        binding.recycler.visibility = View.GONE
+                        binding.addFilesImageButton.visibility = View.VISIBLE
+                        binding.fabCut.hide()
+                        binding.fabDelete.hide()
+                        binding.fabAdd.hide()
+                        binding.fabMovePrior.hide()
                     }else{
-                        recycler.visibility = View.VISIBLE
-                        addFilesImageButton.visibility = View.GONE
-                        fab_cut.show()
-                        fab_delete.show()
-                        fab_add.show()
-                        fab_move_prior.show()
+                        binding.recycler.visibility = View.VISIBLE
+                        binding.addFilesImageButton.visibility = View.GONE
+                        binding.fabCut.show()
+                        binding.fabDelete.show()
+                        binding.fabAdd.show()
+                        binding.fabMovePrior.show()
                     }
                 }
 
@@ -130,11 +133,11 @@ class MainActivity : AppCompatActivity() {
             }
         }
 
-        addFilesImageButton.setOnClickListener {
+        binding.addFilesImageButton.setOnClickListener {
             openFilePicker()
         }
 
-        fab_cut.setOnClickListener { view ->
+        binding.fabCut.setOnClickListener { view ->
             showLoader()
             thread {
                 for (i in images){
@@ -145,55 +148,63 @@ class MainActivity : AppCompatActivity() {
             }
         }
 
-        fab_delete.setOnClickListener{ view ->
-            alert("Would you like to delete all images?",""){
-                yesButton {
-                    showLoader()
-                    thread {
-                        val file = File(inPath)
-                        val fileList = file.listFiles()
-                        for (f in fileList){
-                            f.delete()
-                        }
-
-                        images.clear()
-
-                        originNames.map { name ->
-                            val oFile = File("$screenshotsPath$name")
-                            deleteImage(oFile)
-                        }
-                        originNames.clear()
-
-
-                        handler.sendEmptyMessage(0)
+        binding.fabDelete.setOnClickListener{ view ->
+            val alert = AlertDialog.Builder(this)
+            alert.setMessage("Would you like to delete all images?")
+            alert.setPositiveButton("Aceptar") { dialog, which ->
+                showLoader()
+                thread {
+                    val file = File(inPath)
+                    val fileList = file.listFiles()
+                    for (f in fileList){
+                        f.delete()
                     }
+
+                    images.clear()
+
+                    originNames.map { name ->
+                        val oFile = File("$screenshotsPath$name")
+                        deleteImage(oFile)
+                    }
+                    originNames.clear()
+
+
+                    handler.sendEmptyMessage(0)
                 }
-                noButton {  }
-            }.show()
+            }
+            alert.setNegativeButton("Cancelar"){ dialog, which -> }
+
+            alert.show()
         }
 
-        fab_add.setOnClickListener{
+        binding.fabAdd.setOnClickListener{
             openFilePicker()
         }
 
-        fab_move_prior.setOnClickListener {
-            selector("Select the destination folder", pathOptions) { dialogInterface, i ->
-                when(pathOptions[i]){
+        binding.fabMovePrior.setOnClickListener {
+            val alert = AlertDialog.Builder(this)
+            alert.setTitle("Select the destination folder")
+            alert.setItems(pathOptions.toTypedArray()) { dialog, which ->
+                when(pathOptions[which]){
                     "Select new path" -> {
                         openDirectoryPicker()
                     }
                     else -> {
-                        writeImagesInSelectedPath(pathOptions[i])
+                        writeImagesInSelectedPath(pathOptions[which])
                     }
                 }
             }
+            alert.show()
         }
 
-        recycler.layoutManager = GridLayoutManager(this,3)
-        recycler.adapter =
+        binding.recycler.layoutManager = GridLayoutManager(this,3)
+        binding.recycler.adapter =
             GalleryAdapter(images) { imageItem ->
-                selector("Select an option", itemOptions) { dialogInterface, i ->
-                    when (itemOptions[i]) {
+
+                val alert = AlertDialog.Builder(this)
+                alert.setTitle("Select an option")
+                alert.setItems(itemOptions.toTypedArray()) { dialog, which ->
+                    when(itemOptions[which]){
                         "Remove" -> {
                             deleteFileInUri(imageItem.uri)
 
@@ -201,10 +212,12 @@ class MainActivity : AppCompatActivity() {
 
                             handler.sendEmptyMessage(0)
                         }
+                        else -> {}
                     }
                 }
+                alert.show()
             }
-        recycler.visibility = View.GONE
+        binding.recycler.visibility = View.GONE
     }
 
     fun deleteImage(image : File){
@@ -237,7 +250,7 @@ class MainActivity : AppCompatActivity() {
         for (image in images){
             try {
                 val out = FileOutputStream("${newPath}/${image.name.removeUnwantedExtension()}.png")
-                image.image.compress(Bitmap.CompressFormat.PNG, 100, out)
+                image.image!!.compress(Bitmap.CompressFormat.PNG, 100, out)
             }catch (ex : Exception){
 
             }
@@ -245,10 +258,9 @@ class MainActivity : AppCompatActivity() {
 
         userDefaultsUtils.savePath(newPath)
 
-        alert("Success") {
-            yesButton {}
-        }.show()
+        showAlert("Success", this){}
     }
+
 
     fun openFilePicker(){
         val intent = Intent()
@@ -269,7 +281,7 @@ class MainActivity : AppCompatActivity() {
                 data?.let {
                     if (null != it.clipData) {
                         for (i in 0 until it.clipData!!.itemCount) {
-                            doAsync {
+                            thread {
                                 val uri = it.clipData!!.getItemAt(i).uri
 
                                 //TODO:REMOVE THIS
@@ -285,6 +297,11 @@ class MainActivity : AppCompatActivity() {
                                 originNames.add(name)
 
                                 handler.sendEmptyMessage(0)
+
+                                if (i == (it.clipData!!.itemCount - 1)){
+                                    //Last item
+                                    saveListToSharedPreferences()
+                                }
                             }
                         }
                     } else {
@@ -301,6 +318,8 @@ class MainActivity : AppCompatActivity() {
 
                         handler.sendEmptyMessage(0)
                     }
+
+
 
                     //loadImages()
 
@@ -403,13 +422,13 @@ class MainActivity : AppCompatActivity() {
 
             var mode = "topLine"
 
-            heightLoop@ for (y in 1..(img.image.height - 1)){
+            heightLoop@ for (y in 1..(img.image!!.height - 1)){
                 var whiteNumber = 0
 
                 invalidColors.clear()
 
-                for (x in 1 until img.image.width){
-                    val pixel = img.image.getPixel(x, y)
+                for (x in 1 until img.image!!.width){
+                    val pixel = img.image!!.getPixel(x, y)
 
                     val red = Color.red(pixel)
                     val blue = Color.blue(pixel)
@@ -445,7 +464,7 @@ class MainActivity : AppCompatActivity() {
                     yToStart = y
                 }
 
-                if (whiteNumber > (img.image.width * 0.99) && mode.equals("middle")){
+                if (whiteNumber > (img.image!!.width * 0.99) && mode.equals("middle")){
                     yToFinish = y
 
                     break@heightLoop
@@ -453,12 +472,12 @@ class MainActivity : AppCompatActivity() {
             }
 
 
-            val resizedbitmap1 = Bitmap.createBitmap(img.image, 0, yToStart, 1080, yToFinish - yToStart);
+            val resizedbitmap1 = Bitmap.createBitmap(img.image!!, 0, yToStart, 1080, yToFinish - yToStart);
 
             val out = FileOutputStream("${outPath}${img.name.removeUnwantedExtension()}.png")
             resizedbitmap1.compress(Bitmap.CompressFormat.PNG, 100, out)
         }catch (ex : Exception){
-
+            //TODO:
         }
 
     }
@@ -482,6 +501,16 @@ class MainActivity : AppCompatActivity() {
         if (fileToDelete.exists()){
             fileToDelete.delete()
         }
+    }
+
+    private fun saveListToSharedPreferences(){
+        val gson = GsonBuilder()
+            .excludeFieldsWithoutExposeAnnotation()
+            .create()
+
+        val mockList = gson.toJson(images)
+
+        print("")
     }
 
     /*fun loadImages(){
