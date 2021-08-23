@@ -11,7 +11,7 @@ open class BaseActivity : AppCompatActivity() {
     }
 
     fun showAlert(text : String, context : Context, onAccept : () -> Unit){
-        val alert = AlertDialog.Builder(this)
+        val alert = AlertDialog.Builder(context)
         alert.setMessage(text)
         alert.setPositiveButton("Aceptar"){ dialog, which ->
             onAccept()

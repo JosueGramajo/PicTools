@@ -1,6 +1,8 @@
 package com.example.instagramphotocropper.adapters
 
 import android.content.Context
+import android.graphics.Bitmap
+import android.graphics.BitmapFactory
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
@@ -11,6 +13,8 @@ import com.example.instagramphotocropper.objects.CustomImage
 import com.example.instagramphotocropper.R
 import com.example.instagramphotocropper.objects.RecentPathList
 import com.google.gson.Gson
+import java.io.File
+import kotlin.random.Random
 
 class GalleryAdapter(val list : List<CustomImage>, val itemClick : (CustomImage) -> Unit) : RecyclerView.Adapter<GalleryAdapter.ViewHolder>(){
     override fun onCreateViewHolder(p0: ViewGroup, p1: Int): ViewHolder {
@@ -77,7 +81,16 @@ class DestinationAdapter(val list : ArrayList<String>, val context : Context) : 
     class ViewHolder(val view : View) : RecyclerView.ViewHolder(view){
         fun bind(destination : String) = with(view){
             val textView = view.findViewById(R.id.destinationNameTextView) as TextView
-            textView.text = destination
+            textView.text = destination.split("/").last()
+
+            val imageView = view.findViewById<ImageView>(R.id.imageView3)
+            imageView.setImageBitmap(getRandomImage(destination))
+        }
+        private fun getRandomImage(path : String) : Bitmap{
+            val directory = File(path)
+            val fileList = directory.listFiles()
+            val randomFile = fileList.get(Random.nextInt(0, fileList.size - 1))
+            return BitmapFactory.decodeFile(randomFile.path)
         }
     }
 }

@@ -14,6 +14,7 @@ import android.graphics.BitmapFactory
 import android.graphics.Color
 import android.net.Uri
 import android.os.*
+import android.provider.DocumentsContract
 import android.provider.MediaStore
 import android.provider.OpenableColumns
 import androidx.core.app.ActivityCompat
@@ -33,6 +34,7 @@ import com.example.instagramphotocropper.objects.CustomImage
 import com.example.instagramphotocropper.objects.PixelColor
 import com.example.instagramphotocropper.utils.RealPathUtil
 import com.example.instagramphotocropper.utils.UserDefaultsUtils
+import com.example.instagramphotocropper.utils.delete
 import com.example.instagramphotocropper.utils.removeUnwantedExtension
 import java.io.File
 import java.io.FileOutputStream
@@ -40,6 +42,7 @@ import java.lang.Exception
 import java.io.FileDescriptor
 import kotlin.concurrent.thread
 import com.google.gson.GsonBuilder
+import org.w3c.dom.Document
 
 class MainActivity : BaseActivity() {
 
@@ -63,10 +66,6 @@ class MainActivity : BaseActivity() {
     val itemOptions = listOf("Remove")
 
     val context = this
-
-    companion object ImageUtils{
-        var originNames = arrayListOf<String>()
-    }
 
     var pathOptions = arrayListOf<String>()
 
@@ -154,21 +153,10 @@ class MainActivity : BaseActivity() {
             alert.setPositiveButton("Aceptar") { dialog, which ->
                 showLoader()
                 thread {
-                    val file = File(inPath)
-                    val fileList = file.listFiles()
-                    for (f in fileList){
-                        f.delete()
+                    images.map {
+                        it.uri.delete(this)
                     }
-
                     images.clear()
-
-                    originNames.map { name ->
-                        val oFile = File("$screenshotsPath$name")
-                        deleteImage(oFile)
-                    }
-                    originNames.clear()
-
-
                     handler.sendEmptyMessage(0)
                 }
             }
@@ -206,7 +194,7 @@ class MainActivity : BaseActivity() {
                 alert.setItems(itemOptions.toTypedArray()) { dialog, which ->
                     when(itemOptions[which]){
                         "Remove" -> {
-                            deleteFileInUri(imageItem.uri)
+                            imageItem.uri.delete(this)
 
                             images.removeIf { it.name == imageItem.name }
 
@@ -220,31 +208,13 @@ class MainActivity : BaseActivity() {
         binding.recycler.visibility = View.GONE
     }
 
-    fun deleteImage(image : File){
-        val projection = arrayOf(MediaStore.Images.Media._ID)
-        val selection = "${MediaStore.Images.Media.DATA} = ?"
-        val selectionArgs = arrayOf(image.absolutePath)
-        val queryUri = MediaStore.Images.Media.EXTERNAL_CONTENT_URI
-        val contentResolver = contentResolver
-
-        val cursor = contentResolver.query(queryUri, projection, selection, selectionArgs, null)
-        cursor?.let {
-            if (cursor.moveToFirst()){
-                val id = cursor.getLong(cursor.getColumnIndexOrThrow(MediaStore.Images.Media._ID))
-                val deleteUri = ContentUris.withAppendedId(MediaStore.Images.Media.EXTERNAL_CONTENT_URI, id)
-                contentResolver.delete(deleteUri, null, null)
-            }
-            cursor.close()
-        }
-    }
-
     fun openDirectoryPicker(){
         val intent = Intent(Intent.ACTION_OPEN_DOCUMENT_TREE)
         intent.addCategory(Intent.CATEGORY_DEFAULT)
         startActivityForResult(Intent.createChooser(intent, "Select destination folder"), 9)
     }
 
-    fun writeImagesInSelectedPath(path : String?){
+    private fun writeImagesInSelectedPath(path : String?){
         val newPath = path!!.replace("/tree/primary:", "${Environment.getExternalStorageDirectory()}/")
 
         for (image in images){
@@ -283,19 +253,7 @@ class MainActivity : BaseActivity() {
                         for (i in 0 until it.clipData!!.itemCount) {
                             thread {
                                 val uri = it.clipData!!.getItemAt(i).uri
-
-                                //TODO:REMOVE THIS
-                                val name = getImageName(uri)
-
-
                                 loadImage(uri)
-
-                                /*val name = getImageName(uri)
-
-                                copyBitmapFromUri(uri, name)*/
-
-                                originNames.add(name)
-
                                 handler.sendEmptyMessage(0)
 
                                 if (i == (it.clipData!!.itemCount - 1)){
@@ -309,21 +267,10 @@ class MainActivity : BaseActivity() {
 
                         loadImage(uri)
 
-                        //TODO: REMOVE THIS
-                        val name = getImageName(uri)
-
-                        //copyBitmapFromUri(uri, name)
-
-                        originNames.add(name)
-
                         handler.sendEmptyMessage(0)
+
+                        saveListToSharedPreferences()
                     }
-
-
-
-                    //loadImages()
-
-
                 }
             }
         }else if (requestCode == 9){
@@ -346,22 +293,6 @@ class MainActivity : BaseActivity() {
         }
 
         return "desconocido"
-    }
-
-    private fun copyBitmapFromUri(uri: Uri, name: String) {
-        val parcelFileDescriptor: ParcelFileDescriptor = contentResolver.openFileDescriptor(uri, "r")!!
-        val fileDescriptor: FileDescriptor = parcelFileDescriptor.fileDescriptor
-        val image: Bitmap = BitmapFactory.decodeFileDescriptor(fileDescriptor)
-        parcelFileDescriptor.close()
-
-        val out = FileOutputStream("${inPath}${name}")
-        image.compress(Bitmap.CompressFormat.PNG, 100, out)
-
-        val realPath = RealPathUtil.getRealPath(this, uri)
-        val originalFile = File(realPath)
-        if (originalFile.exists()){
-            originalFile.delete()
-        }
     }
 
     fun verifyFolders() {
@@ -496,21 +427,14 @@ class MainActivity : BaseActivity() {
         }
     }
 
-    fun deleteFileInUri(uri : Uri){
-        val fileToDelete = File(uri.path)
-        if (fileToDelete.exists()){
-            fileToDelete.delete()
-        }
-    }
-
     private fun saveListToSharedPreferences(){
-        val gson = GsonBuilder()
+        /*val gson = GsonBuilder()
             .excludeFieldsWithoutExposeAnnotation()
             .create()
 
         val mockList = gson.toJson(images)
 
-        print("")
+        print("")*/
     }
 
     /*fun loadImages(){

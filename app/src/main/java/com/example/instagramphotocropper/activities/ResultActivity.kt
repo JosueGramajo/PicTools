@@ -6,8 +6,10 @@ import android.content.Intent
 import android.content.SharedPreferences
 import android.graphics.Bitmap
 import android.graphics.BitmapFactory
+import android.net.Uri
 import android.os.Bundle
 import android.os.Environment
+import android.provider.MediaStore
 import androidx.appcompat.app.AppCompatActivity
 import androidx.databinding.DataBindingUtil
 import androidx.recyclerview.widget.GridLayoutManager
@@ -18,12 +20,14 @@ import com.example.instagramphotocropper.objects.CustomImage
 import com.example.instagramphotocropper.objects.RecentPathList
 import com.example.instagramphotocropper.objects.RecentPaths
 import com.example.instagramphotocropper.utils.UserDefaultsUtils
+import com.example.instagramphotocropper.utils.delete
 import com.example.instagramphotocropper.utils.removeUnwantedExtension
 import com.google.gson.Gson
 import java.io.File
 import java.io.FileOutputStream
 import java.lang.Exception
 import java.time.LocalDate
+import kotlin.concurrent.thread
 
 class ResultActivity : BaseActivity(){
 
@@ -53,16 +57,9 @@ class ResultActivity : BaseActivity(){
                 alert.setItems(itemOptions.toTypedArray()) { dialog, which ->
                     when(itemOptions[which]){
                         "Remove" -> {
-                            //TODO: DELETE WITH URI
-
-                            /*
-                            val file = File(imageItem.path)
-                            file.delete()
-
+                            imageItem.uri.delete(this)
                             images.removeIf { it.name.equals(imageItem.name) }
-
-                            recyclerResult.adapter!!.notifyDataSetChanged()
-                             */
+                            binding.recyclerResult.adapter!!.notifyDataSetChanged()
                         }
                         else -> {}
                     }
@@ -92,7 +89,7 @@ class ResultActivity : BaseActivity(){
 
         pathOptions = userDefaultsUtils.getPaths()
 
-        //loadImages()
+        loadImages()
     }
 
     override fun onBackPressed() {
@@ -123,9 +120,11 @@ class ResultActivity : BaseActivity(){
 
         userDefaultsUtils.savePath(newPath)
 
-        showAlert("Success", this){
-            deleteAllFiles()
-            finish()
+        runOnUiThread {
+            showAlert("Success", this){
+                deleteAllFiles()
+                finish()
+            }
         }
     }
 
@@ -150,35 +149,33 @@ class ResultActivity : BaseActivity(){
     override fun onActivityResult(requestCode: Int, resultCode: Int, data: Intent?) {
         super.onActivityResult(requestCode, resultCode, data)
         if (requestCode == 9){
-            val uri = data!!.data
-            val path = uri!!.path
-
-            writeImagesInSelectedPath(path)
+            thread {
+                val uri = data!!.data
+                val path = uri!!.path
+                writeImagesInSelectedPath(path)
+            }
         }
     }
 
 
     //TODO: LOAD IMAGES
-    /*
+
     fun loadImages(){
         images.clear()
 
-        val bitmapList = arrayListOf<Bitmap>()
         val file = File(outPath)
         val fileList = file.listFiles()
         for (f in fileList){
-            bitmapList.add(BitmapFactory.decodeFile(f.path))
+            val bitmap = BitmapFactory.decodeFile(f.path)
             images.add(
                 CustomImage(
                     f.name,
-                    f.path,
-                    BitmapFactory.decodeFile(f.path)
+                    Uri.fromFile(f),
+                    bitmap
                 )
             )
         }
 
-        recyclerResult.adapter!!.notifyDataSetChanged()
+        binding.recyclerResult.adapter!!.notifyDataSetChanged()
     }
-
-     */
 }
