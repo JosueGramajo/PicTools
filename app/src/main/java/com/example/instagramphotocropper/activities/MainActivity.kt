@@ -76,32 +76,6 @@ class MainActivity : BaseActivity() {
 
         binding = DataBindingUtil.setContentView(this, R.layout.activity_main)
 
-        setSupportActionBar(binding.toolbar)
-
-        binding.fabCut.hide()
-        binding.fabAdd.hide()
-        binding.fabDelete.hide()
-        binding.fabMovePrior.hide()
-
-        verifyFolders()
-
-        userDefaultsUtils = UserDefaultsUtils(this.context)
-
-        pathOptions = userDefaultsUtils.getPaths()
-
-        if (ContextCompat.checkSelfPermission(this, Manifest.permission.READ_EXTERNAL_STORAGE) != PackageManager.PERMISSION_GRANTED) {
-            ActivityCompat.requestPermissions(this, arrayOf(Manifest.permission.READ_EXTERNAL_STORAGE, Manifest.permission.WRITE_EXTERNAL_STORAGE), MY_PERMISSIONS_REQUEST)
-        }else{
-            thread {
-                showLoader()
-
-                //TODO: Do this async
-                //loadImages()
-
-                handler.sendEmptyMessage(0)
-            }
-        }
-
         handler = object : Handler() {
             override fun handleMessage(msg: Message) {
                 hideLoader()
@@ -129,6 +103,32 @@ class MainActivity : BaseActivity() {
                 }
 
 
+            }
+        }
+
+        setSupportActionBar(binding.toolbar)
+
+        binding.fabCut.hide()
+        binding.fabAdd.hide()
+        binding.fabDelete.hide()
+        binding.fabMovePrior.hide()
+
+        verifyFolders()
+
+        userDefaultsUtils = UserDefaultsUtils(this.context)
+
+        pathOptions = userDefaultsUtils.getPaths()
+
+        if (ContextCompat.checkSelfPermission(this, Manifest.permission.READ_EXTERNAL_STORAGE) != PackageManager.PERMISSION_GRANTED) {
+            ActivityCompat.requestPermissions(this, arrayOf(Manifest.permission.READ_EXTERNAL_STORAGE, Manifest.permission.WRITE_EXTERNAL_STORAGE), MY_PERMISSIONS_REQUEST)
+        }else{
+            thread {
+                showLoader()
+
+                //TODO: Do this async
+                //loadImages()
+
+                handler.sendEmptyMessage(0)
             }
         }
 
@@ -327,6 +327,10 @@ class MainActivity : BaseActivity() {
 
             }
 
+            R.id.action_insta -> {
+                startActivity(Intent(context, InstaPhotosActivity::class.java))
+            }
+
             else -> super.onOptionsItemSelected(item)
         }
 
@@ -334,16 +338,20 @@ class MainActivity : BaseActivity() {
     }
 
     fun showLoader(){
-        getWindow().setFlags(WindowManager.LayoutParams.FLAG_NOT_TOUCHABLE,
-            WindowManager.LayoutParams.FLAG_NOT_TOUCHABLE);
+        /*runOnUiThread {
+            getWindow().setFlags(WindowManager.LayoutParams.FLAG_NOT_TOUCHABLE,
+                WindowManager.LayoutParams.FLAG_NOT_TOUCHABLE);
 
-        pd = ProgressDialog.show(this, "", "Loading")
+            pd = ProgressDialog.show(this, "", "Loading")
+        }*/
     }
 
     fun hideLoader(){
-        pd.dismiss()
+        /*runOnUiThread {
+            pd.dismiss()
 
-        getWindow().clearFlags(WindowManager.LayoutParams.FLAG_NOT_TOUCHABLE);
+            getWindow().clearFlags(WindowManager.LayoutParams.FLAG_NOT_TOUCHABLE);
+        }*/
     }
 
     fun cropp(img : CustomImage){

@@ -9,12 +9,16 @@ import android.view.ViewGroup
 import android.widget.ImageView
 import android.widget.TextView
 import androidx.recyclerview.widget.RecyclerView
+import com.bumptech.glide.Glide
 import com.example.instagramphotocropper.objects.CustomImage
 import com.example.instagramphotocropper.R
 import com.example.instagramphotocropper.objects.RecentPathList
 import com.google.gson.Gson
 import java.io.File
 import kotlin.random.Random
+import android.util.DisplayMetrics
+import android.widget.LinearLayout
+
 
 class GalleryAdapter(val list : List<CustomImage>, val itemClick : (CustomImage) -> Unit) : RecyclerView.Adapter<GalleryAdapter.ViewHolder>(){
     override fun onCreateViewHolder(p0: ViewGroup, p1: Int): ViewHolder {
@@ -36,6 +40,44 @@ class GalleryAdapter(val list : List<CustomImage>, val itemClick : (CustomImage)
             imageView.setImageBitmap(image.image)
 
             imageView.setOnClickListener{ itemClick(image) }
+        }
+
+    }
+}
+
+class InstaGalleryAdapter(val list : List<String>, val context : Context, val itemClick : (String) -> Unit) : RecyclerView.Adapter<InstaGalleryAdapter.ViewHolder>(){
+    override fun onCreateViewHolder(p0: ViewGroup, p1: Int): ViewHolder {
+        val layoutInflater = LayoutInflater.from(p0.context).inflate(R.layout.cell, p0, false)
+        return ViewHolder(
+            layoutInflater,
+            context,
+            itemClick
+        )
+    }
+
+    override fun onBindViewHolder(holder: ViewHolder, p1: Int) = holder.bind(list[p1])
+
+    override fun getItemCount(): Int = list.count()
+
+    class ViewHolder(val view : View, val context : Context, val itemClick: (String) -> Unit) : RecyclerView.ViewHolder(view){
+        fun bind(imageUrl : String) = with(view){
+            val imageView = view.findViewById<ImageView>(R.id.img)
+            val containerView = view.findViewById<LinearLayout>(R.id.containerView)
+
+            val currentScreenWidth = getCurrentWidth();
+            val params = containerView.layoutParams
+            params.height = currentScreenWidth
+            params.width = currentScreenWidth
+            containerView.layoutParams = params
+
+            Glide.with(context).load(imageUrl).centerCrop().into(imageView)
+
+            imageView.setOnClickListener{ itemClick(imageUrl) }
+        }
+
+        private fun getCurrentWidth() : Int{
+            val displayMetrics = context.resources.displayMetrics
+            return (displayMetrics.widthPixels / displayMetrics.density).toInt()
         }
 
     }
