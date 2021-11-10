@@ -7,4 +7,7 @@
     <color name="deletionRed">#D12929</color>
     <color name="openGreen">#288F3F</color>
     <color name="purple">#853CC5</color>
+
+    <color name="white">#FFFFFF</color>
+    <color name="instagramButton">#dc2d79</color>
 </resources>

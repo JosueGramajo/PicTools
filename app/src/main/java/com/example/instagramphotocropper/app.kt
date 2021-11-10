@@ -11,19 +11,11 @@ import kotlinx.serialization.json.*
 
 
 fun main(){
-    val json = "[{\"name\":\"IMG_20210823_121343.jpg\",\"uri\":\"content://com.android.providers.media.documents/document/image%3A464244\"},{\"name\":\"IMG_20210823_121344_1.jpg\",\"uri\":\"content://com.android.providers.media.documents/document/image%3A464246\"},{\"name\":\"IMG_20210823_121344.jpg\",\"uri\":\"content://com.android.providers.media.documents/document/image%3A464245\"}]"
+    val json = "https://josuegramajo.com/encriptacion?code=AQDsIJ-7oeQyS5tg9z4KT9-iyEMHAbTpwcF3nAxZ88meciuA_MmO0IvQSsgpyW4v4KnJ2pM5hr9tUS_-9JGE4xVn94aWZUnhx8AgebU99E6hbVuWzR0AVVlGyPoY4Hmha-0_4ub6GsM0AYuRGp54G6jAp1kEbA57fh5oPgBZzRhfCUYO4Tiz-8uryhnWhvTlBcKhUCiSMVPbaH5iJRMQPj0R-rCEDeIt3xKdlgiepYrklQ#_"
 
-    val gson = GsonBuilder()
-        .excludeFieldsWithoutExposeAnnotation()
-        .create()
+    val res = json.substring(json.lastIndexOf("=") + 1, json.lastIndexOf("#_"))
 
-    val listJackson = ObjectMapper().readValue(json, Array<ImageData>::class.java)
-    val listGson = Gson().fromJson(json, Array<ImageData>::class.java)
-    val listKtlSerializer = Json.decodeFromString<Array<ImageData>>(json)
-
-
-
-    print("")
+    println(res)
 
 
 }

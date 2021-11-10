@@ -11,4 +11,9 @@
         android:title="@string/action_insta"
         android:orderInCategory="101"
         app:showAsAction="never" />
+
+    <item android:id="@+id/action_login"
+            android:title="@string/action_login"
+            android:orderInCategory="101"
+            app:showAsAction="never" />
 </menu>

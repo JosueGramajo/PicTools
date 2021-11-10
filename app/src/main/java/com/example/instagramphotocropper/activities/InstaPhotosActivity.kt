@@ -12,7 +12,7 @@ import com.example.instagramphotocropper.adapters.InstaGalleryAdapter
 import com.example.instagramphotocropper.databinding.ActivityInstaPhotosBinding
 import com.example.instagramphotocropper.handlers.HtmlDataHandler
 import com.example.instagramphotocropper.network.RetrofitService
-import com.example.instagramphotocropper.network.api.InsDataApi
+import com.example.instagramphotocropper.network.api.InstagramApi
 import com.example.instagramphotocropper.objects.InstagramData
 import com.example.instagramphotocropper.utils.GridItemDecoration
 import com.google.gson.Gson
@@ -60,7 +60,7 @@ class InstaPhotosActivity : AppCompatActivity() {
     }
 
     private fun loadImages(url : String){
-        val client = RetrofitService.createService<InsDataApi>(url)!!
+        val client = RetrofitService.createCustomService<InstagramApi>(url)!!
         client.get(HttpUrl.parse(url)!!).enqueue(object : Callback<ResponseBody>{
             override fun onResponse(call: Call<ResponseBody>, response: Response<ResponseBody>) {
                 val body = response.body()!!.string()

@@ -331,6 +331,10 @@ class MainActivity : BaseActivity() {
                 startActivity(Intent(context, InstaPhotosActivity::class.java))
             }
 
+            R.id.action_login -> {
+                startActivity(Intent(context, LoginActivity::class.java))
+            }
+
             else -> super.onOptionsItemSelected(item)
         }
 
